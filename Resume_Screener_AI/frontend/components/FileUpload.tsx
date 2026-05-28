@@ -63,7 +63,7 @@ export default function FileUpload({ onFileUpload, loading }: FileUploadProps) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8001/api/upload', {
+      const response = await fetch('https://bashartc14-res.hf.space/api/upload', {
         method: 'POST',
         body: formData,
       });
