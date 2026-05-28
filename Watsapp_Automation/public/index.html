@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Bot Dashboard - Bashar's Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1>📊 WhatsApp Bot Dashboard</h1>
+        <p class="subtitle">Bashar's AI Assistant - Real-time Analytics</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-refresh" onclick="refreshAll()">🔄 Refresh</button>
+        <span class="last-updated">Last updated: <span id="lastUpdated">-</span></span>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📨</div>
+        <div class="stat-content">
+          <h3 id="totalMessages">0</h3>
+          <p>Total Messages Today</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+          <h3 id="autoHandled">0</h3>
+          <p>Auto-Handled</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-content">
+          <h3 id="manualNeeded">0</h3>
+          <p>Needs Review</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-content">
+          <h3 id="uniqueContacts">0</h3>
+          <p>Unique Contacts</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('conversations')">💬 Conversations</button>
+      <button class="tab-btn" onclick="switchTab('unhandled')">⚠️ Unhandled</button>
+      <button class="tab-btn" onclick="switchTab('contacts')">👥 Contacts</button>
+      <button class="tab-btn" onclick="switchTab('faq')">📋 FAQ Stats</button>
+      <button class="tab-btn" onclick="switchTab('analytics')">📈 Analytics</button>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Search conversations..." onkeyup="handleSearch(event)">
+    </div>
+
+    <!-- Tab Content -->
+    <div id="conversations" class="tab-content active">
+      <div class="section-header">
+        <h2>Recent Conversations</h2>
+        <div class="pagination">
+          <button class="btn btn-sm" onclick="previousPage()">← Previous</button>
+          <span id="pageInfo">Page 1</span>
+          <button class="btn btn-sm" onclick="nextPage()">Next →</button>
+        </div>
+      </div>
+      <div id="conversationsList" class="conversations-list">
+        <div class="loading">Loading conversations...</div>
+      </div>
+    </div>
+
+    <div id="unhandled" class="tab-content">
+      <div class="section-header">
+        <h2>Unhandled Messages (Need Review)</h2>
+      </div>
+      <div id="unhandledList" class="conversations-list">
+        <div class="loading">Loading unhandled messages...</div>
+      </div>
+    </div>
+
+    <div id="contacts" class="tab-content">
+      <div class="section-header">
+        <h2>All Contacts</h2>
+      </div>
+      <div id="contactsList" class="contacts-list">
+        <div class="loading">Loading contacts...</div>
+      </div>
+    </div>
+
+    <div id="faq" class="tab-content">
+      <div class="section-header">
+        <h2>FAQ Usage Statistics</h2>
+      </div>
+      <div id="faqStats" class="faq-stats">
+        <div class="loading">Loading FAQ stats...</div>
+      </div>
+    </div>
+
+    <div id="analytics" class="tab-content">
+      <div class="section-header">
+        <h2>7-Day Analytics</h2>
+      </div>
+      <div id="analyticsChart" class="analytics-chart">
+        <div class="loading">Loading analytics...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

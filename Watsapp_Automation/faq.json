@@ -1,0 +1,52 @@
+[
+  {
+    "keywords": "who,about,bashar,yourself,you",
+    "response": "👋 *Hi, I'm M. Bashar Sheikh*\n\n🚀 AI Engineer focused on building real-world automation systems, AI agents, and scalable full-stack platforms.\n\n🔹 Experience: 2-3 Years\n🔹 Focus: AI Agents • Automation • Scalable Architectures\n\n💡 I build systems that think, automate, and scale!\n\nType 'skills' or 'projects' to learn more!",
+    "category": "about"
+  },
+  {
+    "keywords": "skills,tech,stack,technology,expertise,what you know",
+    "response": "⚡ *Tech Stack & Skills*\n\n💻 *Frontend:* Next.js, React, TypeScript, Tailwind\n⚙️ *Backend:* Python, FastAPI, Node.js\n🤖 *AI & Automation:* OpenAI, Claude, RAG, n8n, MCP\n☁️ *Cloud:* Docker, Kubernetes, PM2, Digital Ocean\n\n🎯 *Core Expertise:*\n✅ AI Automation Systems\n✅ Agentic AI Workflows\n✅ Full Stack Development\n✅ Scalable System Design\n✅ Cloud Deployment",
+    "category": "skills"
+  },
+  {
+    "keywords": "projects,work,portfolio,built,created",
+    "response": "🚀 *Featured Projects*\n\n🤖 *AI Employee Vault* - 24/7 Cloud AI Automation System\n   Automates Facebook, Twitter, Gmail, WhatsApp, LinkedIn + Odoo ERP\n\n🧠 *AI Learning Platform* - RAG + Personalization + Translation\n   AI chatbot with vector search, multi-language support\n\n⚡ *AI Todo Chatbot* - Event-Driven Microservices\n   Kafka + Dapr architecture with real-time updates\n\n💬 *Multi-Industry AI Chatbot Widget*\n   Embeddable chatbot for Hotel, Real Estate, Healthcare\n\nType 'contact' to discuss your project!",
+    "category": "projects"
+  },
+  {
+    "keywords": "contact,email,reach,hire,work,collaborate",
+    "response": "📫 *Contact Information*\n\n📧 Email: bashartc13@gmail.com\n📍 Location: Karachi, Pakistan\n\n🚀 *Open To:*\n✅ Remote Jobs\n✅ Freelance Projects\n✅ AI Consulting\n✅ SaaS Development\n\nFeel free to reach out - let's build something amazing!",
+    "category": "contact"
+  },
+  {
+    "keywords": "services,offer,do,provide,help with",
+    "response": "💼 *What I Can Help You With*\n\n🤖 Build AI Employees (Automation Systems)\n🧠 Develop RAG-based Intelligent Platforms\n⚙️ Design Event-Driven Microservices\n🌐 Create Full Stack Applications\n☁️ Cloud Deployment & Scaling\n\n💡 *I build production-ready systems, not just demos!*\n\nType 'contact' to discuss your project requirements.",
+    "category": "services"
+  },
+  {
+    "keywords": "experience,background,years,worked",
+    "response": "👨‍💻 *Professional Background*\n\n🔹 Experience: 2-3 Years in AI Engineering\n🔹 Specialization: AI Agents & Automation Systems\n\n⚡ *What Makes Me Different:*\n✅ I don't just build UI — I build systems that think\n✅ I combine AI + Backend + Cloud + Automation\n✅ I build production-ready architectures\n\n💡 Focus: Real-world business automation that replaces manual work with AI.",
+    "category": "about"
+  },
+  {
+    "keywords": "ai employee,automation system,vault",
+    "response": "🤖 *AI Employee Vault*\n\n🚀 A Cloud-Deployed AI Automation System running 24/7\n\n🔥 *Features:*\n✅ Automates Facebook, Twitter, Gmail, WhatsApp, LinkedIn\n✅ Integrates Odoo ERP (CRM, Sales, Invoicing)\n✅ AI content generation + approval workflows\n✅ Scheduler, orchestrator, monitoring system\n\n⚙️ *Tech:* Python, FastAPI, PM2, Docker, Odoo, Claude AI\n\n💡 Real multi-service architecture with human-in-the-loop AI!",
+    "category": "projects"
+  },
+  {
+    "keywords": "help,menu,commands,options",
+    "response": "📋 *Available Commands*\n\nType any of these keywords:\n• *about* - Who is Bashar\n• *skills* - Tech stack & expertise\n• *projects* - Featured work\n• *services* - What I can help with\n• *experience* - Professional background\n• *contact* - Get in touch\n\nOr just ask your question naturally!",
+    "category": "help"
+  },
+  {
+    "keywords": "hi,hello,hey,greetings",
+    "response": "👋 *Hello! I'm Bashar's AI Assistant*\n\nI can tell you about:\n🚀 Bashar's AI Engineering work\n💼 Services & expertise\n🤖 Featured projects\n📫 Contact information\n\nType 'help' to see all commands or just ask your question!",
+    "category": "greeting"
+  },
+  {
+    "keywords": "thanks,thank you,appreciate",
+    "response": "You're welcome! 😊\n\nIs there anything else you'd like to know about Bashar's work or services?\n\nType 'contact' to get in touch directly!\n\nHave a great day!",
+    "category": "greeting"
+  }
+]

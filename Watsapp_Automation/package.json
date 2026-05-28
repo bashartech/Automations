@@ -1,0 +1,35 @@
+{
+  "name": "whatsapp-automation",
+  "version": "1.0.0",
+  "description": "WhatsApp automation with auto-reply, FAQ bot, and conversation logging",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dashboard": "node dashboard.js",
+    "dev": "nodemon index.js",
+    "dev:dashboard": "nodemon dashboard.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "automation",
+    "bot",
+    "faq"
+  ],
+  "author": "M. Bashar Sheikh",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "axios": "^1.16.0",
+    "chrono-node": "^2.9.1",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "googleapis": "^171.4.0",
+    "node-cron": "^3.0.3",
+    "qrcode-terminal": "^0.12.0",
+    "sqlite3": "^5.1.7",
+    "whatsapp-web.js": "^1.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

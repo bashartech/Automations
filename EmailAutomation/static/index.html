@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Automation System</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    
+</head>
+<body>
+    <div class="container">
+        <h1>📧 Email Automation System</h1>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('send')">Send Email</button>
+            <button class="tab-button" onclick="switchTab('schedule')">Schedule Email</button>
+            <button class="tab-button" onclick="switchTab('history')">Email History</button>
+            <button class="tab-button" onclick="switchTab('scheduled')">Scheduled Emails</button>
+        </div>
+
+        <!-- Send Email Tab -->
+        <div id="send-tab" class="tab-content active">
+            <h2>Send Email Now</h2>
+            <div id="send-alert" class="alert"></div>
+
+            <form id="send-form">
+                <div class="form-group">
+                    <label for="send-to">To Email:</label>
+                    <input type="email" id="send-to" required placeholder="recipient@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="send-subject">Subject:</label>
+                    <input type="text" id="send-subject" required placeholder="Email subject">
+                </div>
+
+                <div class="form-group">
+                    <label for="send-body">Message:</label>
+                    <textarea id="send-body" required placeholder="Write your email message here..."></textarea>
+                </div>
+
+                <button type="submit" class="btn">Send Email</button>
+            </form>
+        </div>
+
+        <!-- Schedule Email Tab -->
+        <div id="schedule-tab" class="tab-content">
+            <h2>Schedule Email</h2>
+            <div id="schedule-alert" class="alert"></div>
+
+            <form id="schedule-form">
+                <div class="form-group">
+                    <label for="schedule-to">To Email:</label>
+                    <input type="email" id="schedule-to" required placeholder="recipient@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="schedule-subject">Subject:</label>
+                    <input type="text" id="schedule-subject" required placeholder="Email subject">
+                </div>
+
+                <div class="form-group">
+                    <label for="schedule-body">Message:</label>
+                    <textarea id="schedule-body" required placeholder="Write your email message here..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="schedule-time">Schedule Date & Time:</label>
+                    <input type="datetime-local" id="schedule-time" required>
+                    <div class="datetime-hint">Select when you want this email to be sent</div>
+                </div>
+
+                <button type="submit" class="btn">Schedule Email</button>
+            </form>
+        </div>
+
+        <!-- Email History Tab -->
+        <div id="history-tab" class="tab-content">
+            <h2>Email History</h2>
+            <div id="history-loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading history...</p>
+            </div>
+            <div id="history-content"></div>
+        </div>
+
+        <!-- Scheduled Emails Tab -->
+        <div id="scheduled-tab" class="tab-content">
+            <h2>Scheduled Emails</h2>
+            <div id="scheduled-loading" class="loading">
+                <div class="spinner"></div>
+                <p>Loading scheduled emails...</p>
+            </div>
+            <div id="scheduled-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            if (tabName === 'history') {
+                loadEmailHistory();
+            } else if (tabName === 'scheduled') {
+                loadScheduledEmails();
+            }
+        }
+
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            alert.textContent = message;
+            alert.className = `alert ${type} show`;
+            setTimeout(() => alert.classList.remove('show'), 5000);
+        }
+
+        document.getElementById('send-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            const data = {
+                to: document.getElementById('send-to').value,
+                subject: document.getElementById('send-subject').value,
+                body: document.getElementById('send-body').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/send-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showAlert('send-alert', 'Email sent successfully!', 'success');
+                    e.target.reset();
+                } else {
+                    showAlert('send-alert', result.detail || 'Failed to send email', 'error');
+                }
+            } catch (error) {
+                showAlert('send-alert', 'Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Send Email';
+            }
+        });
+
+        document.getElementById('schedule-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = e.target.querySelector('button');
+            btn.disabled = true;
+            btn.textContent = 'Scheduling...';
+
+            // Get the datetime-local value directly (keeps local timezone)
+            const scheduledTimeStr = document.getElementById('schedule-time').value;
+
+            const data = {
+                to: document.getElementById('schedule-to').value,
+                subject: document.getElementById('schedule-subject').value,
+                body: document.getElementById('schedule-body').value,
+                scheduled_time: scheduledTimeStr  // Send as-is without timezone conversion
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/schedule-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    const displayTime = new Date(scheduledTimeStr).toLocaleString();
+                    showAlert('schedule-alert', `Email scheduled for ${displayTime}`, 'success');
+                    e.target.reset();
+                } else {
+                    showAlert('schedule-alert', result.message || result.detail || 'Failed to schedule email', 'error');
+                }
+            } catch (error) {
+                showAlert('schedule-alert', 'Error: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Schedule Email';
+            }
+        });
+
+        async function loadEmailHistory() {
+            const loading = document.getElementById('history-loading');
+            const content = document.getElementById('history-content');
+
+            loading.style.display = 'block';
+            content.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/email-history`);
+                const result = await response.json();
+
+                if (result.success && result.data.length > 0) {
+                    const table = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>To</th>
+                                    <th>Subject</th>
+                                    <th>Sent At</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.data.map(email => `
+                                    <tr>
+                                        <td>${email.to_email}</td>
+                                        <td>${email.subject}</td>
+                                        <td>${new Date(email.sent_at).toLocaleString()}</td>
+                                        <td><span class="status-badge status-${email.status}">${email.status}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    content.innerHTML = table;
+                } else {
+                    content.innerHTML = '<div class="empty-state">No email history found</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="empty-state">Error loading history: ${error.message}</div>`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function loadScheduledEmails() {
+            const loading = document.getElementById('scheduled-loading');
+            const content = document.getElementById('scheduled-content');
+
+            loading.style.display = 'block';
+            content.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/scheduled-emails`);
+                const result = await response.json();
+
+                if (result.success && result.data.length > 0) {
+                    const table = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>To</th>
+                                    <th>Subject</th>
+                                    <th>Scheduled For</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.data.map(email => `
+                                    <tr>
+                                        <td>${email.to_email}</td>
+                                        <td>${email.subject}</td>
+                                        <td>${new Date(email.scheduled_time).toLocaleString()}</td>
+                                        <td><span class="status-badge status-${email.status}">${email.status}</span></td>
+                                        <td>
+                                            ${email.status === 'pending' ?
+                                                `<button class="btn btn-small" onclick="cancelScheduledEmail(${email.id})">Cancel</button>` :
+                                                '-'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    content.innerHTML = table;
+                } else {
+                    content.innerHTML = '<div class="empty-state">No scheduled emails found</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="empty-state">Error loading scheduled emails: ${error.message}</div>`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        async function cancelScheduledEmail(scheduleId) {
+            if (!confirm('Are you sure you want to cancel this scheduled email?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/scheduled-emails/${scheduleId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert('Scheduled email cancelled successfully');
+                    loadScheduledEmails();
+                } else {
+                    alert('Failed to cancel: ' + (result.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Set minimum datetime to current time
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('schedule-time').min = now.toISOString().slice(0, 16);
+    </script>
+</body>
+</html>
