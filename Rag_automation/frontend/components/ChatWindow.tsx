@@ -37,7 +37,7 @@ export default function ChatWindow() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/chat/query', { query: userMessage.content });
+      const response = await axios.post('https://bashartc14-rag.hf.space/chat/query', { query: userMessage.content });
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',

@@ -34,7 +34,7 @@ export default function DocumentUpload() {
     formData.append('file', file);
 
     try {
-      await axios.post('http://localhost:8000/documents/upload', formData, {
+      await axios.post('https://bashartc14-rag.hf.space/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setUploadStatus('success');
