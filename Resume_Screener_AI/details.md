@@ -1,88 +1,598 @@
-I'll provide you with a structured plan to build this      
-  resume screener AI. Here's the step-by-step approach:
-                                                               Project Structure
-                                                               resume-screener-ai/
-  ├── frontend/          # Next.js app
-  ├── backend/           # FastAPI app
-  └── README.md
+# ROLE
 
-  Implementation Steps
+You are a Senior Software Architect, Senior AI Engineer, Senior Backend Engineer, Senior Frontend Engineer, Product Designer, and QA Engineer.
 
-  Phase 1: Backend Setup (FastAPI + AI)
+Your task is to upgrade an existing Resume Screening SaaS application.
 
-  1. Initialize FastAPI project
-    - Set up virtual environment
-    - Install dependencies: fastapi, uvicorn,
-  python-multipart, pytesseract, pdf2image, Pillow, openai
-    - Configure Gemini API key in environment variables
-  2. Implement OCR service
-    - Install Tesseract OCR
-    - Create text extraction module for PDFs and images
-    - Support formats: PDF, PNG, JPG, DOCX
-  3. Integrate OpenAI Agent SDK with Gemini
-    - Configure OpenAI SDK to use Gemini API endpoint
-    - Create agent for skill extraction
-    - Create agent for job matching
-  4. Build API endpoints
-    - POST /api/upload - handle resume uploads
-    - POST /api/extract-skills - extract skills from resume
-  text
-    - POST /api/match - match resume against job description
-    - GET /api/health - health check
+The current stack is:
 
-  Phase 2: Frontend Setup (Next.js + Tailwind)
+Frontend:
 
-  5. Initialize Next.js project
-    - Create Next.js app with TypeScript
-    - Install Tailwind CSS
-    - Set up API route handlers
-  6. Build UI components
-    - File upload component (drag & drop)
-    - Job description input form
-    - Results display (match percentage, skills breakdown)
-    - Loading states and error handling
-  7. Design professional interface
-    - Clean, modern layout
-    - Responsive design
-    - Professional color scheme
-    - Clear typography
+* Next.js
+* TypeScript
 
-  Phase 3: Integration & Features
+Backend:
 
-  8. Connect frontend to backend
-    - Set up API client
-    - Handle file uploads with progress
-    - Display extracted skills
-    - Show match percentage with visual indicators
-  9. Implement matching algorithm
-    - Parse job description requirements
-    - Compare extracted skills with requirements
-    - Calculate match percentage
-    - Highlight matched vs missing skills
+* FastAPI
+* Python
 
-  Phase 4: Testing
+Database:
 
-  10. Test the system
-    - Unit tests for backend endpoints
-    - Test OCR with various resume formats
-    - Test AI extraction accuracy
-    - End-to-end testing of upload → extract → match flow
-    - Test edge cases (corrupted files, unsupported formats)
+* neon PostgreSQL
 
-  Key Technical Considerations
+AI:
 
-  - OCR: Use pytesseract for images, PyPDF2 or pdfplumber for   PDFs
-  - Gemini with OpenAI SDK: Configure base URL to point to
-  Gemini API
-  - File handling: Implement file size limits and validation
-  - Error handling: Graceful failures with user-friendly
-  messages
-  - Performance: Consider async processing for large files
+* Generic LLM Provider (must be provider-agnostic)
 
-  Would you like me to start implementing this? I can begin
-  with either:
-  1. Backend setup (FastAPI + OCR + AI integration)
-  2. Frontend setup (Next.js + Tailwind)
-  3. Full project scaffolding
+Document Processing:
 
-  Which would you prefer to start with?
+* OCR already exists
+
+You must design and implement a production-quality architecture.
+
+Do not use model-specific implementations.
+
+The system must support any LLM provider.
+
+Avoid cloud vendor lock-in.
+
+Everything must run locally during development.
+
+Use:
+
+* PostgreSQL
+* Redis
+* Celery
+* Qdrant 
+* FastAPI
+* Next.js
+
+---
+
+# PROJECT GOAL
+
+Build an AI-powered Resume Intelligence Platform that allows HR teams to:
+
+* Upload resumes
+* Analyze resumes
+* Rank candidates
+* Categorize candidates
+* Search candidates semantically
+* Detect duplicate resumes
+* Process hundreds or thousands of resumes efficiently
+
+The platform should significantly reduce manual screening work.
+
+---
+
+# GENERAL DEVELOPMENT RULES
+
+1. Use clean architecture.
+
+2. Separate:
+
+   * AI Layer
+   * Service Layer
+   * Repository Layer
+   * API Layer
+
+3. Use dependency injection where appropriate.
+
+4. Use Pydantic models.
+
+5. Use TypeScript types everywhere.
+
+6. Use proper error handling.
+
+7. Use structured logging.
+
+8. Use async processing where possible.
+
+9. Build reusable services.
+
+10. Create modular architecture.
+
+11. Document every module.
+
+12. Create unit-test-ready code.
+
+13. Avoid hardcoded values.
+
+14. Use environment variables.
+
+15. Make every feature scalable.
+
+---
+
+# FEATURE 1
+
+CANDIDATE ANALYSIS ENGINE
+
+Goal:
+
+Analyze a resume against a job description.
+
+Requirements:
+
+* Compare candidate to job description.
+* Generate structured analysis.
+* Generate detailed reasoning.
+* Produce strengths.
+* Produce weaknesses.
+* Produce missing requirements.
+* Produce recommendation.
+
+Backend Requirements:
+
+Create:
+
+services/
+candidate_analysis_service.py
+
+schemas/
+candidate_analysis.py
+
+repositories/
+candidate_repository.py
+
+API Endpoint:
+
+POST
+
+/api/candidates/analyze
+
+Input:
+
+{
+"job_description": "",
+"resume_id": ""
+}
+
+Output:
+
+{
+"candidate_name": "",
+"overall_score": 0,
+"scores": {},
+"strengths": [],
+"weaknesses": [],
+"recommendation": "",
+"summary": ""
+}
+
+Frontend:
+
+Create analysis page.
+
+Display:
+
+* Overall score
+* Score breakdown
+* Strengths
+* Weaknesses
+* Recommendation
+
+Use modern dashboard design.
+
+---
+
+# FEATURE 2
+
+STRUCTURED RESUME EXTRACTION ENGINE
+
+Goal:
+
+Convert resume into structured candidate profile.
+
+Requirements:
+
+Extract:
+
+* Personal information
+* Skills
+* Experience
+* Education
+* Certifications
+* Projects
+* Awards
+* Publications
+
+Create:
+
+CandidateProfile model.
+
+Store structured data in PostgreSQL.
+
+Database Tables:
+
+candidate_profiles
+
+Fields:
+
+id
+resume_id
+name
+email
+phone
+linkedin
+github
+location
+summary
+skills
+experience
+education
+certifications
+projects
+created_at
+
+API:
+
+POST
+
+/api/resumes/extract
+
+Workflow:
+
+Resume Upload
+→ OCR
+→ Extraction
+→ Save Profile
+
+Frontend:
+
+Candidate Profile page.
+
+Display structured profile.
+
+Allow editing extracted data.
+
+---
+
+# FEATURE 3
+
+WEIGHTED SCORING ENGINE
+
+Goal:
+
+Create deterministic scoring.
+
+Requirements:
+
+Create configurable scoring system.
+
+Default weights:
+
+Skills = 40
+Experience = 30
+Education = 15
+Certifications = 10
+Projects = 5
+
+Weights must be configurable in database.
+
+Create:
+
+scoring_service.py
+
+Output:
+
+{
+"skills_score": 0,
+"experience_score": 0,
+"education_score": 0,
+"certification_score": 0,
+"project_score": 0,
+"overall_score": 0
+}
+
+Frontend:
+
+Create scoring visualization.
+
+Show breakdown chart.
+
+Show score calculation details.
+
+---
+
+# FEATURE 4
+
+BULK RESUME PROCESSING
+
+Goal:
+
+Process hundreds or thousands of resumes.
+
+Requirements:
+
+Use:
+
+Redis
+Celery
+
+Create Queue System.
+
+Workflow:
+
+Upload ZIP
+→ Extract Files
+→ Create Jobs
+→ Queue Processing
+→ OCR
+→ Extraction
+→ Analysis
+→ Store Results
+
+Create:
+
+tasks/
+resume_processing_task.py
+
+jobs/
+bulk_processing_job.py
+
+Database:
+
+processing_jobs
+
+Fields:
+
+id
+status
+total_files
+processed_files
+failed_files
+started_at
+completed_at
+
+Frontend:
+
+Bulk Upload Page
+
+Show:
+
+* Upload progress
+* Processing progress
+* Success count
+* Failed count
+
+Create live updates.
+
+---
+
+# FEATURE 5
+
+CANDIDATE CATEGORIZATION
+
+Goal:
+
+Automatically categorize candidates.
+
+Categories:
+
+Strong Match
+Good Match
+Average Match
+Weak Match
+Reject
+
+Requirements:
+
+Automatic assignment.
+
+Store category in database.
+
+Create:
+
+candidate_category_service.py
+
+Database:
+
+candidate_category
+
+Display category badges.
+
+Add filters:
+
+* Strong Match
+* Good Match
+* Average Match
+* Weak Match
+* Reject
+
+Dashboard Analytics:
+
+Count candidates per category.
+
+---
+
+# FEATURE 6
+
+DUPLICATE RESUME DETECTION
+
+Goal:
+
+Detect duplicate candidates.
+
+Requirements:
+
+Create Candidate Fingerprint System.
+
+Fingerprint Sources:
+
+* Email
+* Phone
+* LinkedIn
+* Github
+
+Create similarity detection.
+
+Store embeddings.
+
+Create duplicate detection service.
+
+Output:
+
+{
+"similarity": 0,
+"duplicate_status": "",
+"matching_candidate_id": ""
+}
+
+Create duplicate review screen.
+
+Allow HR to:
+
+* Merge candidates
+* Ignore duplicate
+* Mark as different person
+
+Database:
+
+candidate_duplicates
+
+---
+
+# FEATURE 7
+
+SEMANTIC SEARCH
+
+Goal:
+
+Allow recruiters to search candidates using natural language.
+
+Examples:
+
+"React developer with 3 years experience"
+
+"Frontend engineer"
+
+"Python backend developer"
+
+Requirements:
+
+Use:
+
+Qdrant
+
+Create vector storage service.
+
+Create embedding generation service.
+
+Create semantic search service.
+
+Workflow:
+
+Candidate Profile
+→ Embedding
+→ Qdrant
+
+Search Query
+→ Embedding
+→ Qdrant Search
+→ Ranked Results
+
+API:
+
+POST
+
+/api/search/candidates
+
+Input:
+
+{
+"query": ""
+}
+
+Output:
+
+{
+"results": []
+}
+
+Frontend:
+
+Search Page
+
+Features:
+
+* Search bar
+* Relevance score
+* Candidate cards
+* Advanced filters
+
+---
+
+# DASHBOARD
+
+Create Executive Dashboard.
+
+Metrics:
+
+* Total Resumes
+* Processed Resumes
+* Strong Matches
+* Duplicate Candidates
+* Search Activity
+* Average Match Score
+
+Charts:
+
+* Category Distribution
+* Hiring Funnel
+* Resume Volume
+
+---
+
+# DATABASE
+
+Design complete PostgreSQL schema.
+
+Create migrations.
+
+Create indexes.
+
+Optimize for large datasets.
+
+---
+
+# API DOCUMENTATION
+
+Generate complete API documentation.
+
+Document:
+
+* Request
+* Response
+* Validation
+* Errors
+
+---
+
+# TESTING
+
+Create:
+
+* Unit tests
+* Service tests
+* API tests
+
+---
+
+# DELIVERABLE
+
+Generate:
+
+1. Full architecture plan
+2. Folder structure
+3. Database schema
+4. Backend implementation
+5. Frontend implementation
+6. API design
+7. Redis/Celery integration
+8. Qdrant integration
+9. Migration files
+10. Testing strategy
+11. Step-by-step implementation plan
+
+Before writing code, first provide the complete architecture and implementation roadmap. Then implement feature-by-feature in production-ready quality.

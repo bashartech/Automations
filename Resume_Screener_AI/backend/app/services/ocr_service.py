@@ -88,6 +88,15 @@ class OCRService:
             raise Exception(f"Error extracting text from DOCX: {str(e)}")
 
     @staticmethod
+    def extract_text_from_txt(file_path: str) -> str:
+        """Extract text from plain text file"""
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception as e:
+            raise Exception(f"Error extracting text from TXT: {str(e)}")
+
+    @staticmethod
     def extract_text(file_path: str) -> str:
         """Extract text based on file extension"""
         _, ext = os.path.splitext(file_path)
@@ -99,5 +108,7 @@ class OCRService:
             return OCRService.extract_text_from_image(file_path)
         elif ext == '.docx':
             return OCRService.extract_text_from_docx(file_path)
+        elif ext == '.txt':
+            return OCRService.extract_text_from_txt(file_path)
         else:
             raise ValueError(f"Unsupported file format: {ext}")

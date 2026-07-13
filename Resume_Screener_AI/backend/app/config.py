@@ -21,6 +21,30 @@ class Settings(BaseSettings):
     max_text_length: int = 50000
     tesseract_cmd: str = TESSERACT_CMD
 
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_temperature: float = 0.7
+    groq_max_tokens: int = 8192
+
+    ai_provider: str = "groq"
+
+    neon_database_url: str = ""
+    redis_url: str = "redis://localhost:6379/0"
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
+
+    upload_dir: str = "uploads"
+
+    jwt_secret: str = "resume-screener-secret-change-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expiry_hours: int = 72
+
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_starter: str = ""
+    stripe_price_pro: str = ""
+
     class Config:
         env_file = ".env"
         extra = "allow"
