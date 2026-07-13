@@ -1,21 +1,41 @@
 
 # --- Tesseract configuration must be set before pytesseract import ---
 import os
-TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-TESSERACT_DIR = r'C:\Program Files\Tesseract-OCR'
-import sys
-if TESSERACT_DIR not in os.environ.get('PATH', ''):
-    os.environ['PATH'] = TESSERACT_DIR + os.pathsep + os.environ.get('PATH', '')
+import shutil
+
+def _find_tesseract():
+    # 1. Environment variable override (e.g. set in HF Spaces)
+    env_cmd = os.environ.get("TESSERACT_CMD")
+    if env_cmd and os.path.exists(env_cmd):
+        return env_cmd, os.path.dirname(env_cmd)
+
+    # 2. Platform-specific defaults
+    if os.name == "nt":  # Windows
+        return (r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files\Tesseract-OCR")
+    else:  # Linux / macOS
+        # `which` resolves symlinks and common install paths
+        found = shutil.which("tesseract")
+        if found:
+            return found, os.path.dirname(found)
+
+    # 3. Nothing found
+    return "tesseract", ""  # let pytesseract raise its own error
+
+TESSERACT_CMD, TESSERACT_DIR = _find_tesseract()
+
+if TESSERACT_DIR and TESSERACT_DIR not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = TESSERACT_DIR + os.pathsep + os.environ.get("PATH", "")
+
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
-print(f"[DEBUG] pytesseract.pytesseract_cmd set to: {pytesseract.pytesseract.tesseract_cmd}")
+print(f"[DEBUG] pytesseract.tesseract_cmd set to: {pytesseract.pytesseract.tesseract_cmd}")
 from pdf2image import convert_from_path
 from PIL import Image
 from PyPDF2 import PdfReader
 from docx import Document
 
-# Verify Tesseract is accessible
-if not os.path.exists(TESSERACT_CMD):
+if not shutil.which(TESSERACT_CMD) and not os.path.exists(TESSERACT_CMD):
     raise RuntimeError(f"Tesseract not found at {TESSERACT_CMD}")
 
 class OCRService:
