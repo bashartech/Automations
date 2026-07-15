@@ -106,12 +106,12 @@ function CandidatesContent() {
           {selectedIds.size > 0 && (
             <span className="text-sm text-gray-500 self-center">{selectedIds.size} selected</span>
           )}
-          <a
-            href={api.getExportCsvUrl({ batchId: selectedBatch || undefined, category: filter || undefined, minScore: minScore || undefined, status: statusFilter || undefined })}
+          <button
+            onClick={() => api.exportCsv({ batchId: selectedBatch || undefined, category: filter || undefined, minScore: minScore || undefined, status: statusFilter || undefined })}
             className="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50"
           >
             Export CSV
-          </a>
+          </button>
         </div>
       </div>
 
