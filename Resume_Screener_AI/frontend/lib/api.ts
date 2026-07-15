@@ -442,6 +442,8 @@ export const api = {
     if (params?.batchId) p.set('batch_id', params.batchId);
     if (params?.minScore !== undefined) p.set('min_score', String(params.minScore));
     if (params?.status) p.set('status', params.status);
+    const token = getToken();
+    if (token) p.set('token', token);
     const qs = p.toString();
     const res = await apiFetch(`${API_BASE_URL}/api/candidates/export/csv${qs ? '?' + qs : ''}`);
     if (!res.ok) return handleError(res);

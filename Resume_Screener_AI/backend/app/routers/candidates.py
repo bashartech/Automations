@@ -1,6 +1,6 @@
 import csv
 import io
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -22,9 +22,10 @@ from app.models.candidate_schemas import (
     BulkActionRequest,
     CompareRequest,
 )
-from sqlalchemy import update as sa_update
+from sqlalchemy import select, update as sa_update
 from app.models.orm import DuplicateStatus, User, CandidateDuplicate
 from app.dependencies import get_current_user
+from app.auth_utils import decode_token
 
 router = APIRouter(prefix="/api/candidates", tags=["candidates"])
 
@@ -214,9 +215,29 @@ async def export_candidates_csv(
     batch_id: Optional[str] = Query(None),
     min_score: Optional[float] = Query(None, ge=0, le=100),
     status: Optional[str] = Query(None),
+    token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    authorization: str = Header(None, alias="Authorization"),
 ):
+    # Resolve user from header or token query param (for proxies that strip headers)
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            user_id = decode_token(authorization[7:])
+        except ValueError:
+            pass
+    if not user_id and token:
+        try:
+            user_id = decode_token(token)
+        except ValueError:
+            pass
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    result = await db.execute(select(User).where(User.id == user_id))
+    current_user = result.scalar_one_or_none()
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not found")
+
     repo = _repo(db, current_user)
     if batch_id:
         profiles = await repo.get_candidates_by_batch(batch_id)
