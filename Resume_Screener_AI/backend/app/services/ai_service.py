@@ -7,6 +7,15 @@ from app.models.schemas import SkillExtractResponse, MatchResponse
 
 logger = logging.getLogger(__name__)
 
+MAX_AI_CONTEXT_CHARS = 3000
+
+
+def _truncate_text(text: str, max_chars: int = MAX_AI_CONTEXT_CHARS) -> str:
+    if len(text) > max_chars:
+        half = max_chars // 2
+        return text[:half] + "\n...[TRUNCATED]...\n" + text[-half:]
+    return text
+
 
 def _parse_json_response(content: str) -> dict:
     """Robustly extract and parse a JSON object from an AI response."""
@@ -111,13 +120,14 @@ class AIService:
 
     def extract_skills(self, resume_text: str) -> SkillExtractResponse:
         """Extract skills, experience, and education from resume text"""
+        text = _truncate_text(resume_text)
         prompt = f"""Analyze the following resume and extract:
 1. All technical and professional skills (programming languages, frameworks, tools, soft skills)
 2. Total years of experience (estimate if not explicitly stated)
 3. Education background (degrees, institutions)
 
 Resume:
-{resume_text}
+{text}
 
 Respond in JSON format:
 {{
@@ -151,6 +161,7 @@ Respond in JSON format:
 
     def match_resume_to_job(self, resume_text: str, job_description: str) -> MatchResponse:
         """Match resume against job description and calculate match percentage"""
+        text = _truncate_text(resume_text)
         prompt = f"""Compare the following resume with the job description and provide:
 1. Match percentage (0-100) based on skills, experience, and qualifications
 2. List of matched skills/qualifications
@@ -158,7 +169,7 @@ Respond in JSON format:
 4. Brief summary of the match
 
 Resume:
-{resume_text}
+{text}
 
 Job Description:
 {job_description}

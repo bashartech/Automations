@@ -14,6 +14,7 @@ from app.models.candidate_schemas import BulkUploadResponse, ProcessingJobRespon
 from app.tasks.resume_processing_task import process_resume_file
 from app.dependencies import get_current_user
 from app.services.credit_service import has_sufficient_credits, get_credit_balance
+from app.services.ocr_service import OCRService
 
 logger = logging.getLogger(__name__)
 
@@ -76,18 +77,32 @@ async def bulk_upload(
                 detail=f"Insufficient credits. Need {len(file_paths)} credits, you have {await get_credit_balance(db, current_user.id)}",
             )
 
+        # Extract text from each file immediately and store in DB
+        ocr = OCRService()
+        raw_texts = {}
+        for idx, fp in enumerate(file_paths):
+            try:
+                raw_texts[str(idx)] = ocr.extract_text(fp)
+            except Exception as e:
+                logger.warning("Failed to extract text for %s: %s", fp, e)
+                raw_texts[str(idx)] = ""
+
         job = ProcessingJob(
             id=job_id,
             status=ProcessingStatus.PROCESSING,
             total_files=len(file_paths),
             job_description=job_description or None,
             file_paths=file_paths,
+            raw_texts=raw_texts,
         )
         repo = CandidateRepository(db, current_user.id)
         await repo.create_processing_job(job)
 
-        for idx, fp in enumerate(file_paths):
-            process_resume_file.delay(fp, job_id, idx, job_description)
+        # Remove extracted files — Celery no longer needs them
+        shutil.rmtree(extract_dir, ignore_errors=True)
+
+        for idx in range(len(file_paths)):
+            process_resume_file.delay(job_id, idx, job_description)
 
         return BulkUploadResponse(
             job_id=job_id,
@@ -168,18 +183,32 @@ async def bulk_upload_files(
                 detail=f"Insufficient credits. Need {len(file_paths)} credits, you have {await get_credit_balance(db, current_user.id)}",
             )
 
+        # Extract text from each file immediately and store in DB
+        ocr = OCRService()
+        raw_texts = {}
+        for idx, fp in enumerate(file_paths):
+            try:
+                raw_texts[str(idx)] = ocr.extract_text(fp)
+            except Exception as e:
+                logger.warning("Failed to extract text for %s: %s", fp, e)
+                raw_texts[str(idx)] = ""
+
         job = ProcessingJob(
             id=job_id,
             status=ProcessingStatus.PROCESSING,
             total_files=len(file_paths),
             job_description=job_description or None,
             file_paths=file_paths,
+            raw_texts=raw_texts,
         )
         repo = CandidateRepository(db, current_user.id)
         await repo.create_processing_job(job)
 
-        for idx, fp in enumerate(file_paths):
-            process_resume_file.delay(fp, job_id, idx, job_description)
+        # Remove extracted files — Celery no longer needs them
+        shutil.rmtree(extract_dir, ignore_errors=True)
+
+        for idx in range(len(file_paths)):
+            process_resume_file.delay(job_id, idx, job_description)
 
         return BulkUploadResponse(
             job_id=job_id,

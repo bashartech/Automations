@@ -55,10 +55,7 @@ function CandidatesContent() {
       if (!confirm(`Delete ${selectedIds.size} candidates?`)) return;
       await api.bulkDeleteCandidates(Array.from(selectedIds));
     } else if (bulkAction === 'export') {
-      const ids = Array.from(selectedIds);
-      const params = new URLSearchParams();
-      ids.forEach((id) => params.append('ids', id));
-      window.open(api.getExportCsvUrl({ batchId: selectedBatch || undefined }), '_blank');
+      await api.exportCsv({ batchId: selectedBatch || undefined });
       return;
     } else if (bulkAction.startsWith('status:')) {
       const s = bulkAction.replace('status:', '');

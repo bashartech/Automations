@@ -215,7 +215,7 @@ export default function BulkUploadPage() {
             Status: <span className="font-medium capitalize">{job.status.replace('_', ' ')}</span>
           </p>
 
-          {(job.status === 'completed') && (
+          {(job.status === 'completed' && job.processed_files + job.failed_files >= job.total_files) && (
             <div className="mt-2 text-sm text-green-600 space-x-3">
               <span>All candidates processed.</span>
               <a href={`/candidates?batch_id=${job.id}`} className="underline">View Candidates</a>

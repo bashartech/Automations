@@ -2,25 +2,23 @@ import asyncio
 from typing import List, Optional
 from datetime import datetime, timezone
 from app.celery_app import celery_app
-from app.services.ocr_service import OCRService
 from app.database import async_session
 from app.repositories.candidate_repository import CandidateRepository
 from app.services.profile_extraction_service import ProfileExtractionService
 from app.services.candidate_analysis_service import CandidateAnalysisService
 from app.services.duplicate_detection_service import DuplicateDetectionService
 from sqlalchemy import select
-from app.models.orm import ProcessingStatus, CandidateProfile
+from app.models.orm import ProcessingJob, ProcessingStatus, CandidateProfile
 from app.services.credit_service import deduct_credits
 
 
 @celery_app.task(bind=True, max_retries=3, acks_late=True, reject_on_worker_lost=True,
                  autoretry_for=(),
                  retry_backoff=30, retry_backoff_max=120)
-def process_resume_file(self, file_path: str, job_id: str, file_index: int,
+def process_resume_file(self, job_id: str, file_index: int,
                         job_description: str = ""):
     try:
-        ocr = OCRService()
-        text = ocr.extract_text(file_path)
+        text = asyncio.run(_get_extracted_text(job_id, file_index))
 
         resume_id = f"{job_id}_{file_index}"
         asyncio.run(_process_single_resume(text, resume_id, job_id, job_description))
@@ -38,6 +36,17 @@ def process_resume_file(self, file_path: str, job_id: str, file_index: int,
         except Exception:
             pass
         return {"status": "failed", "file_index": file_index, "error": str(exc)}
+
+
+async def _get_extracted_text(job_id: str, file_index: int) -> str:
+    async with async_session() as db:
+        result = await db.execute(
+            select(ProcessingJob.raw_texts).where(ProcessingJob.id == job_id)
+        )
+        raw_texts = result.scalar_one_or_none()
+        if raw_texts and str(file_index) in raw_texts:
+            return raw_texts[str(file_index)]
+        return ""
 
 
 async def _process_single_resume(text: str, resume_id: str, job_id: str, job_description: str):
@@ -103,8 +112,8 @@ async def _increment_failed(job_id: str):
 
 @celery_app.task
 def process_bulk_upload(file_paths: List[str], job_id: str, job_description: str = ""):
-    for idx, fp in enumerate(file_paths):
-        process_resume_file.delay(fp, job_id, idx, job_description)
+    for idx in range(len(file_paths)):
+        process_resume_file.delay(job_id, idx, job_description)
 
 
 @celery_app.task(bind=True, max_retries=2, acks_late=True)

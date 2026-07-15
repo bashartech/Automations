@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.ai_service import AIService, _parse_json_response
+from app.services.ai_service import AIService, _parse_json_response, _truncate_text
 from app.models.orm import CandidateProfile, CandidateCategory
 from app.repositories.candidate_repository import CandidateRepository
 from app.services.categorization_service import CategorizationService
@@ -26,12 +26,12 @@ class CandidateAnalysisService:
 
 Candidate Profile:
 Name: {profile.name}
-Skills: {profile.skills}
-Experience: {profile.experience}
-Education: {profile.education}
-Certifications: {profile.certifications}
-Projects: {profile.projects}
-Summary: {profile.summary}
+Skills: {_truncate_text(str(profile.skills or ""), 1000)}
+Experience: {_truncate_text(str(profile.experience or ""), 1000)}
+Education: {_truncate_text(str(profile.education or ""), 800)}
+Certifications: {_truncate_text(str(profile.certifications or ""), 800)}
+Projects: {_truncate_text(str(profile.projects or ""), 1500)}
+Summary: {_truncate_text(str(profile.summary or ""), 500)}
 
 Job Description:
 {job_description}
@@ -67,7 +67,7 @@ Be honest and realistic. A strong match is 80-100, good is 65-79, average is 50-
                 {"role": "user", "content": prompt},
             ],
             temperature=self.ai.temperature,
-            max_tokens=self.ai.max_tokens,
+            max_tokens=1024,
         )
         finish = response.choices[0].finish_reason
         if finish == "length":

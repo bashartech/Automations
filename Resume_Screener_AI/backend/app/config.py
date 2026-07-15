@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
     groq_temperature: float = 0.7
-    groq_max_tokens: int = 8192
+    groq_max_tokens: int = 2500
 
     ai_provider: str = "groq"
 

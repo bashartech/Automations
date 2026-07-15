@@ -1,7 +1,5 @@
-import os
 import logging
 import asyncio
-from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +9,7 @@ from app.models.orm import ProcessingJob, ProcessingStatus, CandidateProfile, Us
 from app.models.candidate_schemas import ProcessingJobResponse
 from app.tasks.resume_processing_task import process_resume_file, reanalyze_candidate
 from app.dependencies import get_current_user
-from app.services.credit_service import has_sufficient_credits, get_credit_balance
+from app.services.credit_service import has_sufficient_credits, deduct_credits, get_credit_balance
 from sqlalchemy import select, delete
 
 logger = logging.getLogger(__name__)
@@ -70,10 +68,6 @@ async def delete_batch(job_id: str, db: AsyncSession = Depends(get_db),
     if not job:
         raise HTTPException(status_code=404, detail="Batch not found")
     await repo.delete_processing_job(job_id)
-    upload_dir = Path("uploads") / job_id
-    if upload_dir.exists():
-        import shutil
-        shutil.rmtree(upload_dir, ignore_errors=True)
     return {"message": f"Batch {job_id} and its candidates deleted"}
 
 
@@ -100,6 +94,8 @@ async def reanalyze_batch(job_id: str, job_description: str = Form(...), db: Asy
             status_code=402,
             detail=f"Insufficient credits. Need {len(candidates)} credits, you have {await get_credit_balance(db, current_user.id)}",
         )
+
+    await deduct_credits(db, current_user.id, len(candidates), reason="reanalyze")
 
     # Reset counters and set new JD
     from sqlalchemy import update as sql_update
@@ -131,38 +127,38 @@ async def retry_failed(job_id: str, db: AsyncSession = Depends(get_db),
     if job.status == ProcessingStatus.PROCESSING:
         raise HTTPException(status_code=409, detail="This batch is already processing. Wait for it to complete.")
 
-    file_paths = job.file_paths or []
-    if not file_paths:
-        raise HTTPException(status_code=400, detail="No file paths stored for this batch")
+    total_files = job.total_files or 0
+    if total_files == 0:
+        raise HTTPException(status_code=400, detail="No files in this batch")
 
-    missing = []
-    for idx, fp in enumerate(file_paths):
+    missing_indices = []
+    for idx in range(total_files):
         result = await db.execute(
             select(CandidateProfile).where(CandidateProfile.resume_id == f"{job_id}_{idx}")
         )
         profile = result.scalar_one_or_none()
         if profile and profile.overall_score is not None:
             continue
-        if not os.path.exists(fp):
-            logger.warning("File missing for retry: %s", fp)
+        if not job.raw_texts or str(idx) not in job.raw_texts:
+            logger.warning("No extracted text for index %s in batch %s", idx, job_id)
             continue
-        missing.append((idx, fp))
+        missing_indices.append(idx)
 
-    if not missing:
+    if not missing_indices:
         return {"message": "No failed files to retry", "retried_count": 0}
 
-    if not await has_sufficient_credits(db, current_user.id, len(missing)):
+    if not await has_sufficient_credits(db, current_user.id, len(missing_indices)):
         raise HTTPException(
             status_code=402,
-            detail=f"Insufficient credits. Need {len(missing)} credits, you have {await get_credit_balance(db, current_user.id)}",
+            detail=f"Insufficient credits. Need {len(missing_indices)} credits, you have {await get_credit_balance(db, current_user.id)}",
         )
 
     await repo.update_processing_job(job_id, {"status": ProcessingStatus.PROCESSING})
     jd = job.job_description or ""
-    for idx, fp in missing:
-        process_resume_file.delay(fp, job_id, idx, jd)
+    for idx in missing_indices:
+        process_resume_file.delay(job_id, idx, jd)
 
     return {
-        "message": f"Retrying {len(missing)} failed files",
-        "retried_count": len(missing),
+        "message": f"Retrying {len(missing_indices)} failed files",
+        "retried_count": len(missing_indices),
     }

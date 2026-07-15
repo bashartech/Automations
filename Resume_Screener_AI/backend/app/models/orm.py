@@ -83,6 +83,7 @@ class ProcessingJob(Base):
     failed_files: Mapped[int] = mapped_column(Integer, default=0)
     job_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     file_paths: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    raw_texts: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, server_default=func.now())
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

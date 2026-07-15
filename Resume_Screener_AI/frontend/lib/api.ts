@@ -436,13 +436,23 @@ export const api = {
     return res.json();
   },
 
-  getExportCsvUrl(params?: { category?: string; batchId?: string; minScore?: number; status?: string }): string {
+  async exportCsv(params?: { category?: string; batchId?: string; minScore?: number; status?: string }): Promise<void> {
     const p = new URLSearchParams();
     if (params?.category) p.set('category', params.category);
     if (params?.batchId) p.set('batch_id', params.batchId);
     if (params?.minScore !== undefined) p.set('min_score', String(params.minScore));
     if (params?.status) p.set('status', params.status);
     const qs = p.toString();
-    return `${API_BASE_URL}/api/candidates/export/csv${qs ? '?' + qs : ''}`;
+    const res = await apiFetch(`${API_BASE_URL}/api/candidates/export/csv${qs ? '?' + qs : ''}`);
+    if (!res.ok) return handleError(res);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'candidates_export.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   },
 };
