@@ -1,13 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { api, ProcessingJobResponse } from '@/lib/api';
+import Link from 'next/link';
+import { FileArchive, FolderOpen, UploadCloud, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
+import { api, authApi, ProcessingJobResponse, JobResponse, getCompanyId } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { PageHeader } from '@/components/page-header';
+import { Reveal } from '@/components/motion/reveal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'bulk_job_id';
 
 type UploadMode = 'zip' | 'folder';
 
 export default function BulkUploadPage() {
+  const [, setCompId] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<JobResponse[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [mode, setMode] = useState<UploadMode>('zip');
   const [file, setFile] = useState<File | null>(null);
   const [folderFiles, setFolderFiles] = useState<File[]>([]);
@@ -17,6 +30,16 @@ export default function BulkUploadPage() {
   const [job, setJob] = useState<ProcessingJobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    authApi.me().then(u => {
+      const cid = u.company_id || getCompanyId();
+      if (cid) {
+        setCompId(cid);
+        api.getJobs(cid).then(setJobs).catch(() => {});
+      }
+    }).catch(() => {});
+  }, []);
 
   const supportedFormats = '.pdf, .docx, .png, .jpg, .jpeg, .bmp, .tiff, .txt';
 
@@ -82,147 +105,188 @@ export default function BulkUploadPage() {
   const progress = job ? Math.round((job.processed_files / job.total_files) * 100) : 0;
 
   return (
-    <div className="p-8 max-w-3xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Bulk Resume Upload</h1>
-      <p className="text-gray-500 mb-6">
-        Upload resumes via ZIP or select a folder. Each resume is OCR'd, a structured profile is extracted, and scored against the job description.
-      </p>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Reveal y={14}>
+        <PageHeader
+          eyebrow="AI Tooling"
+          title="Bulk Resume Upload"
+          description="Upload resumes via ZIP or folder. Each resume is OCR'd, a structured profile is extracted, and scored against the job description."
+        />
+      </Reveal>
 
-      <div className="bg-white rounded-lg shadow p-6 mb-6 space-y-4">
-        {/* Mode toggle */}
-        <div className="flex gap-2 mb-2">
-          <button
-            onClick={() => setMode('zip')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'zip' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            ZIP File
-          </button>
-          <button
-            onClick={() => setMode('folder')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              mode === 'folder' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Folder
-          </button>
-        </div>
-
-        {/* Job Description input — REQUIRED for scoring */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Job Description <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            placeholder="Paste the job description here. Every resume will be scored against this JD. Without a JD, no scoring is possible."
-            rows={5}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 text-gray-950 focus:ring-blue-500 focus:border-transparent"
-          />
-          {jobDescription.trim() === '' && (
-            <p className="text-xs text-red-500 mt-1">Required — all resumes are scored against this job description</p>
-          )}
-        </div>
-
-        {/* ZIP input */}
-        {mode === 'zip' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ZIP File of Resumes
-            </label>
-            <input
-              type="file"
-              accept=".zip"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-            <p className="text-xs text-gray-400 mt-1">Supported inside ZIP: {supportedFormats}</p>
+      <Reveal y={18}>
+        <div className="glass-card rounded-3xl p-6 md:p-8">
+          <div className="mb-5 flex gap-1.5 rounded-full border border-border/60 bg-background/40 p-1">
+            <button
+              onClick={() => setMode('zip')}
+              className={cn(
+                'flex cursor-pointer flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200',
+                mode === 'zip' ? 'bg-foreground text-background shadow' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <FileArchive className="h-4 w-4" /> ZIP File
+            </button>
+            <button
+              onClick={() => setMode('folder')}
+              className={cn(
+                'flex cursor-pointer flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200',
+                mode === 'folder' ? 'bg-foreground text-background shadow' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <FolderOpen className="h-4 w-4" /> Folder
+            </button>
           </div>
-        )}
 
-        {/* Folder input */}
-        {mode === 'folder' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Folder Containing Resumes
-            </label>
-            <input
-              type="file"
-              {...{ webkitdirectory: "", directory: "" } as any}
-              onChange={(e) => {
-                const files = e.target.files;
-                if (!files) return;
-                const allowed = new Set(['.pdf', '.docx', '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.txt']);
-                const valid: File[] = [];
-                for (const f of Array.from(files)) {
-                  const ext = '.' + f.name.split('.').pop()?.toLowerCase();
-                  if (allowed.has(ext) && !f.name.startsWith('._')) {
-                    valid.push(f);
+          <div className="space-y-5">
+            <div className="space-y-1.5">
+              <Label>Select Existing Job (optional)</Label>
+              <Select
+                value={selectedJobId || undefined}
+                onValueChange={(jid) => {
+                  setSelectedJobId(jid);
+                  if (jid) {
+                    const j = jobs.find(j => j.id === jid);
+                    if (j?.description) setJobDescription(j.description);
                   }
-                }
-                setFolderFiles(valid);
-                setFolderName(files.length > 0 ? files[0].webkitRelativePath.split('/')[0] || 'folder' : '');
-              }}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-            {folderFiles.length > 0 && (
-              <p className="text-sm text-green-600 mt-1">
-                {folderFiles.length} resume{folderFiles.length > 1 ? 's' : ''} found in &quot;{folderName}&quot;
-              </p>
-            )}
-          </div>
-        )}
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Type manually below" /></SelectTrigger>
+                <SelectContent>
+                  {jobs.map(j => (
+                    <SelectItem key={j.id} value={j.id}>{j.title} ({j.status})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <button
-          onClick={handleUpload}
-          disabled={uploading || !canUpload}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors"
-        >
-          {uploading ? 'Uploading...' : 'Upload & Process'}
-        </button>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-      </div>
+            <div className="space-y-1.5">
+              <Label>
+                Job Description <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste the job description here. Every resume will be scored against this JD."
+                rows={5}
+              />
+              {jobDescription.trim() === '' && (
+                <p className="text-xs text-destructive">Required — all resumes are scored against this job description</p>
+              )}
+            </div>
+
+            {mode === 'zip' ? (
+              <div className="space-y-1.5">
+                <Label>ZIP File of Resumes</Label>
+                <div className="rounded-2xl border border-dashed border-border/80 bg-background/30 p-5 transition-colors duration-200 hover:border-gold/40">
+                  <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-gold/10 text-gold">
+                      <UploadCloud className="h-5 w-5" />
+                    </span>
+                    <span className="text-sm font-medium">
+                      {file ? file.name : 'Choose a ZIP file'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Supported inside ZIP: {supportedFormats}</span>
+                    <input
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label>Select Folder Containing Resumes</Label>
+                <div className="rounded-2xl border border-dashed border-border/80 bg-background/30 p-5 transition-colors duration-200 hover:border-gold/40">
+                  <label className="flex cursor-pointer flex-col items-center gap-2 text-center">
+                    <span className="grid h-11 w-11 place-items-center rounded-xl bg-gold/10 text-gold">
+                      <FolderOpen className="h-5 w-5" />
+                    </span>
+                    <span className="text-sm font-medium">{folderName || 'Choose a folder'}</span>
+                    <span className="text-xs text-muted-foreground">Supported: {supportedFormats}</span>
+                    <input
+                      type="file"
+                      {...{ webkitdirectory: "", directory: "" } as unknown as React.InputHTMLAttributes<HTMLInputElement>}
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (!files) return;
+                        const allowed = new Set(['.pdf', '.docx', '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.txt']);
+                        const valid: File[] = [];
+                        for (const f of Array.from(files)) {
+                          const ext = '.' + f.name.split('.').pop()?.toLowerCase();
+                          if (allowed.has(ext) && !f.name.startsWith('._')) {
+                            valid.push(f);
+                          }
+                        }
+                        setFolderFiles(valid);
+                        setFolderName(files.length > 0 ? files[0].webkitRelativePath.split('/')[0] || 'folder' : '');
+                      }}
+                    />
+                  </label>
+                </div>
+                {folderFiles.length > 0 && (
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                    {folderFiles.length} resume{folderFiles.length > 1 ? 's' : ''} found in &quot;{folderName}&quot;
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="pt-1">
+              <Button variant="gold" onClick={handleUpload} disabled={uploading || !canUpload} className="gap-1.5">
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                {uploading ? 'Uploading...' : 'Upload & Process'}
+              </Button>
+              {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            </div>
+          </div>
+        </div>
+      </Reveal>
 
       {job && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="font-semibold text-gray-800 mb-4">Processing Status</h2>
-
-          <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-            <div
-              className="h-4 rounded-full bg-blue-600 transition-all duration-500"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
+        <Reveal>
+          <div className="glass-card rounded-3xl p-6 md:p-8">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
+                <CheckCircle2 className="h-5 w-5 text-gold" /> Processing Status
+              </h2>
+              <Badge variant="info" className="capitalize">{job.status.replace('_', ' ')}</Badge>
+            </div>
+            <div className="mb-5 h-3 w-full overflow-hidden rounded-full bg-secondary/60">
+              <div
+                className="h-full rounded-full gold-gradient transition-all duration-500"
+                style={{ width: `${Math.min(progress, 100)}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold">{job.total_files}</p>
+                <p className="text-sm text-muted-foreground">Total</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-500">{job.processed_files}</p>
+                <p className="text-sm text-muted-foreground">Processed</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-destructive">{job.failed_files}</p>
+                <p className="text-sm text-muted-foreground">Failed</p>
+              </div>
+            </div>
+            {job.status === 'completed' && job.processed_files + job.failed_files >= job.total_files && (
+              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4 text-sm">
+                <span className="text-emerald-600 dark:text-emerald-400">All candidates processed.</span>
+                <Link href={`/candidates?batch_id=${job.id}`} className="inline-flex items-center gap-1 font-medium text-gold hover:underline">
+                  View Candidates <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+                <Link href="/batches" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground hover:underline">
+                  All Batches <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-gray-800">{job.total_files}</p>
-              <p className="text-sm text-gray-500">Total</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-600">{job.processed_files}</p>
-              <p className="text-sm text-gray-500">Processed</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-red-600">{job.failed_files}</p>
-              <p className="text-sm text-gray-500">Failed</p>
-            </div>
-          </div>
-
-          <p className="mt-4 text-sm text-gray-500">
-            Status: <span className="font-medium capitalize">{job.status.replace('_', ' ')}</span>
-          </p>
-
-          {(job.status === 'completed' && job.processed_files + job.failed_files >= job.total_files) && (
-            <div className="mt-2 text-sm text-green-600 space-x-3">
-              <span>All candidates processed.</span>
-              <a href={`/candidates?batch_id=${job.id}`} className="underline">View Candidates</a>
-              <a href="/batches" className="underline text-gray-500">All Batches</a>
-            </div>
-          )}
-        </div>
+        </Reveal>
       )}
     </div>
   );

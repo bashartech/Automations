@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { isAuthenticated, clearToken, api } from '@/lib/api';
+import { LogOut, Wallet, LogIn } from 'lucide-react';
 
 export default function AuthSidebar() {
   const router = useRouter();
@@ -32,33 +33,33 @@ export default function AuthSidebar() {
     return (
       <Link
         href="/login"
-        className="flex items-center gap-3 px-5 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
-        <span className="text-lg">🔐</span>
+        <LogIn className="h-[18px] w-[18px]" />
         Sign In
       </Link>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-1">
       <Link
         href="/billing"
-        className="flex items-center gap-3 px-5 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
-        <span className="text-lg">🪙</span>
+        <Wallet className="h-[18px] w-[18px]" />
         <span>Credits</span>
         {credits !== null && (
-          <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+          <span className="ml-auto rounded-full gold-gradient px-2 py-0.5 text-xs font-semibold text-gold-foreground">
             {credits}
           </span>
         )}
       </Link>
       <button
         onClick={handleLogout}
-        className="flex items-center gap-3 px-5 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors w-full text-left"
+        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
-        <span className="text-lg">🚪</span>
+        <LogOut className="h-[18px] w-[18px]" />
         Sign Out
       </button>
     </div>

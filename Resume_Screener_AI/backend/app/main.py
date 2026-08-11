@@ -11,7 +11,7 @@ else:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import upload, analysis, candidates, search, dashboard, bulk, batches, auth, credits
+from app.routers import upload, analysis, candidates, search, dashboard, bulk, batches, auth, credits, companies, knowledge, jobs, interviews, notifications, admin, auth_google
 from app.database import init_db, async_session
 from app.models.orm import CreditPack
 from sqlalchemy import select
@@ -25,7 +25,9 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000","https://automations-r3k4.vercel.app"],
+    allow_origins=["http://localhost:3000",
+                #    "https://automations-r3k4.vercel.app"
+                   ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,6 +43,13 @@ app.include_router(bulk.router)
 app.include_router(batches.router)
 app.include_router(auth.router)
 app.include_router(credits.router)
+app.include_router(companies.router)
+app.include_router(knowledge.router)
+app.include_router(jobs.router)
+app.include_router(interviews.router)
+app.include_router(notifications.router)
+app.include_router(admin.router)
+app.include_router(auth_google.router)
 
 
 async def seed_credit_packs():

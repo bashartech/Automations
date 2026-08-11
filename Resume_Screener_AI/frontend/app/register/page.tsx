@@ -3,7 +3,13 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { UserRound, Mail, Lock } from 'lucide-react';
 import { authApi, setToken } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AuthShell } from '@/components/auth-shell';
+import { cn } from '@/lib/utils';
 
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -18,7 +24,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const cooldownRef = useRef(0);
 
-  function passwordStrength(pw: string): { label: string; color: string; width: string } {
+  function passwordStrength(pw: string): { label: string; width: string } {
     let score = 0;
     if (pw.length >= 6) score++;
     if (pw.length >= 10) score++;
@@ -26,10 +32,10 @@ export default function RegisterPage() {
     if (/[a-z]/.test(pw)) score++;
     if (/[0-9]/.test(pw)) score++;
     if (/[^A-Za-z0-9]/.test(pw)) score++;
-    if (score <= 2) return { label: 'Weak', color: 'bg-red-500', width: 'w-1/4' };
-    if (score <= 4) return { label: 'Medium', color: 'bg-yellow-500', width: 'w-2/4' };
-    if (score <= 5) return { label: 'Good', color: 'bg-blue-500', width: 'w-3/4' };
-    return { label: 'Strong', color: 'bg-green-500', width: 'w-full' };
+    if (score <= 2) return { label: 'Weak', width: 'w-1/4' };
+    if (score <= 4) return { label: 'Medium', width: 'w-2/4' };
+    if (score <= 5) return { label: 'Good', width: 'w-3/4' };
+    return { label: 'Strong', width: 'w-full' };
   }
 
   function validate(): boolean {
@@ -62,7 +68,7 @@ export default function RegisterPage() {
     try {
       const res = await authApi.register(name, email, password);
       setToken(res.token);
-      router.push('/');
+      router.push('/onboarding');
     } catch (err: any) {
       const msg = err.message || 'Registration failed';
       setApiError(msg);
@@ -82,83 +88,118 @@ export default function RegisterPage() {
   const strength = passwordStrength(password);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Create Account</h1>
+    <AuthShell
+      title="Create your account"
+      subtitle="Start screening resumes with AI in under a minute."
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link href="/login" className="font-medium text-gold hover:underline">
+            Sign In
+          </Link>
+        </>
+      }
+    >
+      {apiError && (
+        <div className="mb-5 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          {apiError}
+        </div>
+      )}
 
-        {apiError && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
-            {apiError}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Name</Label>
+          <div className="relative">
+            <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="name"
+              autoComplete="name"
               value={name}
               onChange={e => { setName(e.target.value); clearErr('name'); }}
-              className={`w-full border text-black rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.name ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+              className={cn('pl-9', fieldErrors.name && 'border-destructive')}
+              placeholder="Jane Cooper"
             />
-            {fieldErrors.name && <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>}
           </div>
+          {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={e => { setEmail(e.target.value); clearErr('email'); }}
-              className={`w-full text-black border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+              className={cn('pl-9', fieldErrors.email && 'border-destructive')}
+              placeholder="you@company.com"
             />
-            {fieldErrors.email && <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>}
           </div>
+          {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="password"
               type="password"
+              autoComplete="new-password"
               value={password}
               onChange={e => { setPassword(e.target.value); clearErr('password'); }}
-              className={`w-full text-black border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+              className={cn('pl-9', fieldErrors.password && 'border-destructive')}
+              placeholder="••••••••"
             />
-            {password && (
-              <div className="mt-2">
-                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${strength.color} ${strength.width}`} />
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">{strength.label}</p>
-              </div>
-            )}
-            {fieldErrors.password && <p className="text-xs text-red-600 mt-1">{fieldErrors.password}</p>}
           </div>
+          {password && (
+            <div className="mt-2">
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500',
+                    strength.width,
+                    strength.label === 'Weak'
+                      ? 'bg-destructive'
+                      : strength.label === 'Strong'
+                        ? 'bg-emerald-500'
+                        : 'gold-gradient',
+                  )}
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Strength: <span className="font-medium">{strength.label}</span>
+              </p>
+            </div>
+          )}
+          {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-            <input
+        <div className="space-y-1.5">
+          <Label htmlFor="confirm-password">Confirm Password</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="confirm-password"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={e => { setConfirmPassword(e.target.value); clearErr('confirmPassword'); }}
-              className={`w-full text-black border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.confirmPassword ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+              className={cn('pl-9', fieldErrors.confirmPassword && 'border-destructive')}
+              placeholder="••••••••"
             />
-            {fieldErrors.confirmPassword && <p className="text-xs text-red-600 mt-1">{fieldErrors.confirmPassword}</p>}
           </div>
+          {fieldErrors.confirmPassword && (
+            <p className="text-xs text-destructive">{fieldErrors.confirmPassword}</p>
+          )}
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Creating account...' : 'Create Account'}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">Sign In</Link>
-        </p>
-      </div>
-    </div>
+        <Button type="submit" disabled={loading} variant="gold" className="w-full py-2.5" size="lg">
+          {loading ? 'Creating account…' : 'Create Account'}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

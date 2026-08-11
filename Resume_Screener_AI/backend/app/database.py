@@ -6,6 +6,7 @@ from app.config import get_settings
 
 settings = get_settings()
 
+
 def _clean_pg_url(url: str) -> str:
     if not url:
         return url
@@ -17,6 +18,7 @@ def _clean_pg_url(url: str) -> str:
         qs.pop(key, None)
     parsed = parsed._replace(query=urlencode(qs, doseq=True))
     return urlunparse(parsed)
+
 
 engine: AsyncEngine = create_async_engine(
     _clean_pg_url(settings.neon_database_url),
@@ -41,20 +43,7 @@ async def get_db():
 
 
 async def init_db():
+    """Initialize database: create tables if they don't exist.
+    Run `alembic upgrade head` for full migration management."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Migrate: add columns that may not exist on existing tables
-        for stmt in [
-            "ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS job_description TEXT",
-            "ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS file_paths JSON",
-            "ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'new'",
-            "ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS notes TEXT",
-            "ALTER TABLE candidate_profiles ADD COLUMN IF NOT EXISTS user_id VARCHAR(36) REFERENCES users(id)",
-            "ALTER TABLE processing_jobs ADD COLUMN IF NOT EXISTS user_id VARCHAR(36) REFERENCES users(id)",
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS credits_remaining INTEGER DEFAULT 0",
-            "ALTER TABLE credit_packs ADD COLUMN IF NOT EXISTS stripe_price_id VARCHAR(255)",
-        ]:
-            try:
-                await conn.execute(__import__("sqlalchemy").text(stmt))
-            except Exception:
-                pass

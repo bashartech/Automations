@@ -18,6 +18,7 @@ pytesseract.pytesseract.pytesseract_cmd = TESSERACT_CMD
 class Settings(BaseSettings):
     gemini_api_key: str = "test_key"
     gemini_model: str = "gemini-1.5-pro"
+    gemini_embedding_model: str = "models/text-embedding-004"
     max_text_length: int = 50000
     tesseract_cmd: str = TESSERACT_CMD
 
@@ -30,8 +31,8 @@ class Settings(BaseSettings):
 
     neon_database_url: str = ""
     redis_url: str = "redis://localhost:6379/0"
-    qdrant_url: str = ""
-    qdrant_api_key: str = ""
+    upstash_redis_rest_url: str = ""
+    upstash_redis_rest_token: str = ""
 
     upload_dir: str = "uploads"
 
@@ -44,6 +45,19 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     stripe_price_starter: str = ""
     stripe_price_pro: str = ""
+
+    rate_limit_requests_per_minute: int = 30
+
+    google_calendar_credentials: str = ""
+    google_calendar_calendar_id: str = "primary"
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:8000/api/google/auth/callback"
+    emailjs_service_id: str = ""
+    emailjs_template_id: str = ""
+    emailjs_user_id: str = ""
+    emailjs_access_token: str = ""
+    mock_external_services: bool = True
 
     class Config:
         env_file = ".env"

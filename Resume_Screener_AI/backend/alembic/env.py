@@ -19,7 +19,13 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 from app.database import Base, _clean_pg_url
-from app.models.orm import CandidateProfile, ProcessingJob, CandidateDuplicate, ScoringWeight
+from app.models.orm import (
+    User, CandidateProfile, ProcessingJob, CandidateDuplicate,
+    CreditPack, CreditTransaction, ScoringWeight,
+    Company, Department, Job, CompanyKnowledge, EmailTemplate,
+    UploadedDocument, Interview, InterviewSlot, Notification,
+    ActivityLog, CandidateScore,
+)
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

@@ -3,7 +3,12 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { LogIn, Mail, Lock } from 'lucide-react';
 import { authApi, setToken } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AuthShell } from '@/components/auth-shell';
 
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -42,7 +47,7 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(email, password);
       setToken(res.token);
-      router.push('/');
+      router.push(res.user?.company_id ? '/' : '/onboarding');
     } catch (err: any) {
       const msg = err.message || 'Login failed';
       setApiError(msg);
@@ -56,53 +61,70 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Sign In</h1>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to your workspace and keep hiring."
+      footer={
+        <>
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="font-medium text-gold hover:underline">
+            Create one free
+          </Link>
+        </>
+      }
+    >
+      {apiError && (
+        <div className="mb-5 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+          {apiError}
+        </div>
+      )}
 
-        {apiError && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
-            {apiError}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={e => { setEmail(e.target.value); setFieldErrors(prev => ({ ...prev, email: undefined })); }}
-              className={`w-full border text-black rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+              className={`pl-9 ${fieldErrors.email ? 'border-destructive' : ''}`}
+              placeholder="you@company.com"
             />
-            {fieldErrors.email && <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>}
           </div>
+          {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={e => { setPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: undefined })); }}
-              className={`w-full text-black border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${fieldErrors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+              className={`pl-9 ${fieldErrors.password ? 'border-destructive' : ''}`}
+              placeholder="••••••••"
             />
-            {fieldErrors.password && <p className="text-xs text-red-600 mt-1">{fieldErrors.password}</p>}
           </div>
+          {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-blue-600 hover:underline">Register</Link>
-        </p>
-      </div>
-    </div>
+        <Button type="submit" disabled={loading} variant="gold" className="w-full py-2.5" size="lg">
+          {loading ? (
+            'Signing in…'
+          ) : (
+            <>
+              <LogIn className="h-4 w-4" />
+              Sign In
+            </>
+          )}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

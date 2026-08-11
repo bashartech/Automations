@@ -1,14 +1,17 @@
 import hashlib
+import bcrypt
 from datetime import datetime, timedelta, timezone
 from app.config import get_settings
 
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    if password_hash.startswith("$2") and len(password_hash) == 60:
+        return bcrypt.checkpw(password.encode(), password_hash.encode())
+    return hashlib.sha256(password.encode()).hexdigest() == password_hash
 
 
 def create_token(user_id: str) -> str:

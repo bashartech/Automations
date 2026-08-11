@@ -35,7 +35,7 @@ yarn-error.log*
 
 # vercel
 .vercel
-
+client_secret_665903364619-643e050cv1o0c07fnm7578jc1k405b3m.apps.googleusercontent.com.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts

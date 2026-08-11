@@ -1,13 +1,14 @@
 import csv
 import io
+import os
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.database import get_db
 from app.repositories.candidate_repository import CandidateRepository
 from app.services.profile_extraction_service import ProfileExtractionService
-from app.services.candidate_analysis_service import CandidateAnalysisService
+from app.services.combined_analysis_agent import CombinedAnalysisAgent
 from app.services.duplicate_detection_service import DuplicateDetectionService
 from app.models.candidate_schemas import (
     CandidateProfileResponse,
@@ -16,6 +17,7 @@ from app.models.candidate_schemas import (
     ProfileExtractResponse,
     AnalyzeRequest,
     AnalyzeResponse,
+    AnalyzeResponseV2,
     WeightsUpdate,
     WeightsResponse,
     DuplicateReviewRequest,
@@ -23,7 +25,7 @@ from app.models.candidate_schemas import (
     CompareRequest,
 )
 from sqlalchemy import select, update as sa_update
-from app.models.orm import DuplicateStatus, User, CandidateDuplicate
+from app.models.orm import DuplicateStatus, User, CandidateDuplicate, CandidateProfile, CandidateCategory
 from app.dependencies import get_current_user
 from app.auth_utils import decode_token
 
@@ -62,6 +64,7 @@ async def list_candidates(
     batch_id: Optional[str] = Query(None),
     min_score: Optional[float] = Query(None, ge=0, le=100),
     status: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -73,7 +76,7 @@ async def list_candidates(
         return [CandidateProfileResponse.model_validate(p) for p in profiles]
     profiles = await repo.search_profiles(
         limit=limit, offset=offset, category=category,
-        resume_id=resume_id, min_score=min_score, status=status,
+        resume_id=resume_id, min_score=min_score, status=status, search=search,
     )
     return [CandidateProfileResponse.model_validate(p) for p in profiles]
 
@@ -86,6 +89,22 @@ async def get_candidate(profile_id: str, db: AsyncSession = Depends(get_db),
     if not profile:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return CandidateProfileResponse.model_validate(profile)
+
+
+@router.get("/{profile_id}/download")
+async def download_resume(profile_id: str, db: AsyncSession = Depends(get_db),
+                          current_user: User = Depends(get_current_user)):
+    repo = _repo(db, current_user)
+    profile = await repo.get_profile(profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    if not profile.resume_file_path:
+        raise HTTPException(status_code=404, detail="No resume file available for download")
+    if not os.path.isfile(profile.resume_file_path):
+        raise HTTPException(status_code=404, detail="Resume file not found on disk")
+
+    filename = os.path.basename(profile.resume_file_path)
+    return FileResponse(profile.resume_file_path, filename=filename)
 
 
 @router.patch("/{profile_id}", response_model=CandidateProfileResponse)
@@ -109,12 +128,46 @@ async def delete_candidate(profile_id: str, db: AsyncSession = Depends(get_db),
     return {"message": "Candidate deleted"}
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
+@router.post("/analyze", response_model=AnalyzeResponseV2)
 async def analyze_candidate(request: AnalyzeRequest, db: AsyncSession = Depends(get_db),
                             current_user: User = Depends(get_current_user)):
     try:
-        service = CandidateAnalysisService(db)
-        return await service.analyze(request.resume_id, request.job_description)
+        agent = CombinedAnalysisAgent(db)
+        score = await agent.analyze(request.resume_id, "", request.job_description)
+        repo = _repo(db, current_user)
+        profile = await repo.get_profile(request.resume_id)
+        category_val = CandidateCategory.REJECT
+        if score.overall_score is not None:
+            if score.overall_score >= 80:
+                category_val = CandidateCategory.STRONG_MATCH
+            elif score.overall_score >= 65:
+                category_val = CandidateCategory.GOOD_MATCH
+            elif score.overall_score >= 50:
+                category_val = CandidateCategory.AVERAGE_MATCH
+            elif score.overall_score >= 35:
+                category_val = CandidateCategory.WEAK_MATCH
+        return AnalyzeResponseV2(
+            candidate_id=score.candidate_id,
+            job_id=score.job_id,
+            candidate_name=profile.name if profile else None,
+            scores={
+                "overall_score": score.overall_score or 0,
+                "technical_score": score.technical_score or 0,
+                "experience_score": score.experience_score or 0,
+                "skill_match_score": score.skill_match_score or 0,
+                "education_score": score.education_score or 0,
+                "project_score": score.project_score or 0,
+                "culture_fit_score": score.culture_fit_score or 0,
+                "confidence_score": score.confidence_score or 0,
+            },
+            missing_skills=score.missing_skills or [],
+            strengths=score.strengths or [],
+            weaknesses=score.weaknesses or [],
+            risks=score.risks or [],
+            recommendation=score.ai_recommendation or "",
+            explanation=score.ai_explanation or "",
+            category=category_val,
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -155,11 +208,47 @@ async def get_duplicates(profile_id: str, db: AsyncSession = Depends(get_db),
     if not profile:
         raise HTTPException(status_code=404, detail="Candidate not found")
     dup_service = DuplicateDetectionService(db)
-    duplicates = await dup_service.check(profile)
+    flags = await dup_service.get_all_flags(profile)
     return [
-        {"id": d.id, "name": d.name, "email": d.email, "similarity": dup_service.compute_text_similarity(profile.raw_text, d.raw_text)}
-        for d in duplicates if d.id != profile_id
+        {
+            "id": r["candidate"].id,
+            "name": r["candidate"].name,
+            "email": r["candidate"].email,
+            "similarity": r["similarity"],
+            "method": r["method"],
+        }
+        for r in flags if r["candidate"].id != profile_id
     ]
+
+
+@router.get("/duplicates/pending")
+async def list_pending_duplicates(db: AsyncSession = Depends(get_db),
+                                 current_user: User = Depends(get_current_user)):
+    repo = _repo(db, current_user)
+    result = await db.execute(
+        select(CandidateDuplicate)
+        .join(CandidateProfile, CandidateDuplicate.candidate_id_1 == CandidateProfile.id)
+        .where(
+            CandidateProfile.user_id == current_user.id,
+            CandidateDuplicate.duplicate_status == DuplicateStatus.PENDING_REVIEW,
+        )
+        .order_by(CandidateDuplicate.similarity.desc())
+    )
+    dups = list(result.scalars().all())
+    output = []
+    for d in dups:
+        c1 = await repo.get_profile(d.candidate_id_1)
+        c2 = await repo.get_profile(d.candidate_id_2)
+        output.append({
+            "id": d.id,
+            "candidate_1": {"id": c1.id, "name": c1.name, "email": c1.email} if c1 else None,
+            "candidate_2": {"id": c2.id, "name": c2.name, "email": c2.email} if c2 else None,
+            "similarity": d.similarity,
+            "method": d.method,
+            "status": d.duplicate_status.value,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+        })
+    return output
 
 
 @router.post("/duplicates/{duplicate_id}/review")

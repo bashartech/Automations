@@ -1,7 +1,7 @@
 from typing import Optional, List
-from sqlalchemy import select, func, update, delete
+from sqlalchemy import select, func, update, delete, String
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.orm import CandidateProfile, ProcessingJob, CandidateDuplicate, ScoringWeight
+from app.models.orm import CandidateProfile, ProcessingJob, CandidateDuplicate, ScoringWeight, CandidateScore
 
 
 class CandidateRepository:
@@ -34,7 +34,8 @@ class CandidateRepository:
 
     async def search_profiles(self, limit: int = 50, offset: int = 0, category: Optional[str] = None,
                               resume_id: Optional[str] = None, min_score: Optional[float] = None,
-                              status: Optional[str] = None) -> List[CandidateProfile]:
+                              status: Optional[str] = None,
+                              search: Optional[str] = None) -> List[CandidateProfile]:
         query = self._scope(select(CandidateProfile))
         if category:
             query = query.where(CandidateProfile.category == category)
@@ -44,6 +45,13 @@ class CandidateRepository:
             query = query.where(CandidateProfile.overall_score >= min_score)
         if status:
             query = query.where(CandidateProfile.status == status)
+        if search:
+            pattern = f"%{search}%"
+            query = query.where(
+                CandidateProfile.name.ilike(pattern) |
+                CandidateProfile.email.ilike(pattern) |
+                func.cast(CandidateProfile.skills, type_=String).ilike(pattern)
+            )
         query = query.order_by(CandidateProfile.overall_score.desc().nullslast(), CandidateProfile.created_at.desc()).offset(offset).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -174,3 +182,32 @@ class CandidateRepository:
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def upsert_candidate_score(self, score: CandidateScore) -> CandidateScore:
+        existing = await self.db.execute(
+            select(CandidateScore).where(
+                CandidateScore.candidate_id == score.candidate_id,
+                CandidateScore.job_id == score.job_id,
+            )
+        )
+        existing_record = existing.scalar_one_or_none()
+        if existing_record:
+            for key, value in score.__dict__.items():
+                if key != "_sa_instance_state" and value is not None:
+                    setattr(existing_record, key, value)
+            await self.db.commit()
+            await self.db.refresh(existing_record)
+            return existing_record
+        self.db.add(score)
+        await self.db.commit()
+        await self.db.refresh(score)
+        return score
+
+    async def get_candidate_score(self, candidate_id: str, job_id: str) -> Optional[CandidateScore]:
+        result = await self.db.execute(
+            select(CandidateScore).where(
+                CandidateScore.candidate_id == candidate_id,
+                CandidateScore.job_id == job_id,
+            )
+        )
+        return result.scalar_one_or_none()

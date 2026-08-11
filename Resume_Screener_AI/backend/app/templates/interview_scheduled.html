@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Interview Scheduled</title>
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#1a1a1a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#1a1a1a;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color:#2d2d2d;border:2px solid #d4af37;border-radius:8px;overflow:hidden;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#d4af37 0%,#f9e39a 100%);padding:30px;text-align:center;">
+              <h1 style="color:#1a1a1a;margin:0;font-size:24px;text-transform:uppercase;letter-spacing:2px;">Interview Scheduled</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px 30px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-bottom:20px;">
+                    <p style="color:#ffffff;margin:0;font-size:16px;">Dear <strong style="color:#d4af37;">{{candidate_name}}</strong>,</p>
+                    <p style="color:#cccccc;margin:10px 0 0 0;font-size:14px;line-height:1.6;">Your interview has been scheduled. Please find the details below.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px;background-color:#3d3d3d;border-radius:6px;">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding:8px 0;color:#d4af37;font-size:14px;width:120px;">Date</td>
+                        <td style="padding:8px 0;color:#ffffff;font-size:14px;">{{date}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0;color:#d4af37;font-size:14px;">Time</td>
+                        <td style="padding:8px 0;color:#ffffff;font-size:14px;">{{time}} {{timezone}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0;color:#d4af37;font-size:14px;">Interviewer</td>
+                        <td style="padding:8px 0;color:#ffffff;font-size:14px;">{{interviewer}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0;color:#d4af37;font-size:14px;">Meeting Link</td>
+                        <td style="padding:8px 0;"><a href="{{meet_link}}" style="color:#d4af37;font-size:14px;">{{meet_link}}</a></td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                {{#notes}}
+                <tr>
+                  <td style="padding:20px 0 0 0;border-top:1px solid #444444;padding-top:20px;">
+                    <h2 style="color:#d4af37;margin:0 0 10px 0;font-size:16px;">Additional Notes</h2>
+                    <p style="color:#cccccc;margin:0;font-size:14px;line-height:1.6;">{{notes}}</p>
+                  </td>
+                </tr>
+                {{/notes}}
+                <tr>
+                  <td style="padding:20px 0 0 0;">
+                    <p style="color:#cccccc;margin:0;font-size:14px;line-height:1.6;">Please ensure you have a stable internet connection and join the meeting a few minutes early.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#1a1a1a;padding:20px;text-align:center;">
+              <p style="color:#888888;margin:0;font-size:12px;">This is an automated interview notification.</p>
+              <p style="color:#d4af37;margin:10px 0 0 0;font-size:12px;font-weight:bold;">Resume Screener AI</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

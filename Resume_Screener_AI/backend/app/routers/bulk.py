@@ -89,6 +89,8 @@ async def bulk_upload(
 
         job = ProcessingJob(
             id=job_id,
+            user_id=current_user.id,
+            company_id=current_user.company_id,
             status=ProcessingStatus.PROCESSING,
             total_files=len(file_paths),
             job_description=job_description or None,
@@ -97,9 +99,6 @@ async def bulk_upload(
         )
         repo = CandidateRepository(db, current_user.id)
         await repo.create_processing_job(job)
-
-        # Remove extracted files — Celery no longer needs them
-        shutil.rmtree(extract_dir, ignore_errors=True)
 
         for idx in range(len(file_paths)):
             process_resume_file.delay(job_id, idx, job_description)
@@ -195,6 +194,8 @@ async def bulk_upload_files(
 
         job = ProcessingJob(
             id=job_id,
+            user_id=current_user.id,
+            company_id=current_user.company_id,
             status=ProcessingStatus.PROCESSING,
             total_files=len(file_paths),
             job_description=job_description or None,
@@ -203,9 +204,6 @@ async def bulk_upload_files(
         )
         repo = CandidateRepository(db, current_user.id)
         await repo.create_processing_job(job)
-
-        # Remove extracted files — Celery no longer needs them
-        shutil.rmtree(extract_dir, ignore_errors=True)
 
         for idx in range(len(file_paths)):
             process_resume_file.delay(job_id, idx, job_description)

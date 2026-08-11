@@ -1,13 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  ArrowLeft,
+  Sparkles,
+  ExternalLink,
+  Mail,
+  Phone,
+  MapPin,
+  StickyNote,
+  FileText,
+  GraduationCap,
+  Briefcase,
+} from 'lucide-react';
 import { api, CandidateProfile, AnalyzeResponse } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { PageLoader } from '@/components/premium-loader';
+import { Reveal, Stagger, staggerItem } from '@/components/motion/reveal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 const STATUS_OPTIONS = ['new', 'shortlisted', 'interviewed', 'hired', 'rejected'];
 
 export default function CandidateDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [jobDesc, setJobDesc] = useState('');
@@ -39,8 +60,9 @@ export default function CandidateDetailPage() {
   };
 
   const handleStatusChange = async (status: string) => {
+    if (status === profile?.status) return;
     try {
-      const updated = await api.updateCandidate(id, { status } as any);
+      const updated = await api.updateCandidate(id, { status });
       setProfile(updated);
     } catch (err) {
       console.error(err);
@@ -50,7 +72,7 @@ export default function CandidateDetailPage() {
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
-      const updated = await api.updateCandidate(id, { notes } as any);
+      const updated = await api.updateCandidate(id, { notes });
       setProfile(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -61,217 +83,265 @@ export default function CandidateDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-gray-500">Loading...</div>;
-  if (!profile) return <div className="p-8 text-red-500">Candidate not found</div>;
+  if (loading) return <PageLoader />;
+  if (!profile) return (
+    <div className="space-y-6">
+      <div className="glass-card rounded-2xl border-destructive/40 p-6">
+        <p className="font-semibold text-destructive">Candidate not found</p>
+      </div>
+    </div>
+  );
 
-  const categoryColors: Record<string, string> = {
-    strong_match: 'bg-green-100 text-green-800',
-    good_match: 'bg-blue-100 text-blue-800',
-    average_match: 'bg-yellow-100 text-yellow-800',
-    weak_match: 'bg-orange-100 text-orange-800',
-    reject: 'bg-red-100 text-red-800',
+  const categoryVariants: Record<string, 'success' | 'info' | 'warning' | 'destructive'> = {
+    strong_match: 'success',
+    good_match: 'info',
+    average_match: 'warning',
+    weak_match: 'destructive',
+    reject: 'destructive',
   };
 
-  const statusColors: Record<string, string> = {
-    new: 'bg-gray-100 text-gray-600',
-    shortlisted: 'bg-indigo-100 text-indigo-700',
-    interviewed: 'bg-blue-100 text-blue-700',
-    hired: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700',
-  };
+  const scoreTone = profile.overall_score !== null
+    ? profile.overall_score >= 75 ? 'text-emerald-500' : profile.overall_score >= 50 ? 'gold-gradient-text' : 'text-destructive'
+    : 'text-foreground';
 
   return (
-    <div className="p-8 max-w-5xl">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{profile.name || 'Unnamed Candidate'}</h1>
-            <select
-              value={profile.status || 'new'}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className={`text-xs font-medium px-2.5 py-1 rounded-full border-0 cursor-pointer ${
-                statusColors[profile.status || 'new'] || 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-4 mt-1 text-sm text-gray-500">
-            {profile.email && <span>{profile.email}</span>}
-            {profile.phone && <span>{profile.phone}</span>}
-            {profile.location && <span>{profile.location}</span>}
-          </div>
-          <div className="flex gap-2 mt-2">
-            {profile.linkedin && <a href={profile.linkedin} className="text-blue-600 text-sm hover:underline" target="_blank">LinkedIn</a>}
-            {profile.github && <a href={profile.github} className="text-blue-600 text-sm hover:underline" target="_blank">GitHub</a>}
-          </div>
-        </div>
-        <div className="flex flex-col items-end">
-          {profile.category && (
-            <span className={`text-sm font-medium px-3 py-1 rounded-full capitalize ${
-              categoryColors[profile.category] || ''
-            }`}>
-              {profile.category.replace('_', ' ')}
-            </span>
-          )}
-          {profile.overall_score !== null && (
-            <span className="text-3xl font-bold text-gray-800 mt-2">{profile.overall_score.toFixed(0)}%</span>
-          )}
-        </div>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <Reveal y={14}>
+        <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+      </Reveal>
 
-      {/* Summary */}
-      {profile.summary && (
-        <div className="bg-white rounded-lg shadow p-5 mb-4">
-          <h2 className="font-semibold text-gray-800 mb-2">Summary</h2>
-          <p className="text-gray-600">{profile.summary}</p>
-        </div>
-      )}
-
-      {/* Skills */}
-      {profile.skills && profile.skills.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-5 mb-4">
-          <h2 className="font-semibold text-gray-800 mb-3">Skills ({profile.skills.length})</h2>
-          <div className="flex flex-wrap gap-2">
-            {profile.skills.map((s, i) => (
-              <span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">{s}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Experience */}
-      {profile.experience && profile.experience.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-5 mb-4">
-          <h2 className="font-semibold text-gray-800 mb-3">Experience</h2>
-          {profile.experience.map((exp, i) => (
-            <div key={i} className="mb-3 last:mb-0">
-              <h3 className="font-medium text-gray-900">{exp.title}</h3>
-              <p className="text-sm text-gray-500">{exp.company} · {exp.duration}</p>
-              {exp.description && <p className="text-sm text-gray-600 mt-1">{exp.description}</p>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Education */}
-      {profile.education && profile.education.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-5 mb-4">
-          <h2 className="font-semibold text-gray-800 mb-3">Education</h2>
-          {profile.education.map((edu, i) => (
-            <div key={i} className="mb-2 last:mb-0">
-              <h3 className="font-medium text-gray-900">{edu.degree}</h3>
-              <p className="text-sm text-gray-500">{edu.institution} · {edu.year}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Notes */}
-      <div className="bg-white rounded-lg shadow p-5 mb-4">
-        <h2 className="font-semibold text-gray-800 mb-3">Notes</h2>
-        <textarea
-          value={notes}
-          onChange={(e) => { setNotes(e.target.value); setSaved(false); }}
-          placeholder="Add private notes about this candidate..."
-          rows={3}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
-        />
-        <button
-          onClick={handleSaveNotes}
-          disabled={saving}
-          className={`mt-2 font-semibold py-1.5 px-4 rounded-lg text-sm transition-colors ${
-            saved ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {saving ? 'Saving...' : saved ? 'Saved' : 'Save Notes'}
-        </button>
-      </div>
-
-      {/* Analyze Section */}
-      <div className="bg-white rounded-lg shadow p-5 mb-4">
-        <h2 className="font-semibold text-gray-800 mb-3">Analyze Against Job Description</h2>
-        <textarea
-          value={jobDesc}
-          onChange={(e) => setJobDesc(e.target.value)}
-          placeholder="Paste job description here..."
-          className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg text-sm resize-none"
-        />
-        <button
-          onClick={handleAnalyze}
-          disabled={analyzing || !jobDesc.trim()}
-          className="mt-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-        >
-          {analyzing ? 'Analyzing...' : 'Analyze'}
-        </button>
-      </div>
-
-      {/* Analysis Results */}
-      {analysis && (
-        <div className="bg-white rounded-lg shadow p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">Analysis Results</h2>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <ScoreBox label="Overall" value={analysis.overall_score} />
-            <ScoreBox label="Skills" value={analysis.scores.skills_score} />
-            <ScoreBox label="Experience" value={analysis.scores.experience_score} />
-            <ScoreBox label="Education" value={analysis.scores.education_score} />
-            <ScoreBox label="Certifications" value={analysis.scores.certification_score} />
-            <ScoreBox label="Projects" value={analysis.scores.project_score} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <h3 className="font-medium text-green-700 mb-2">Strengths</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                {analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-medium text-red-700 mb-2">Weaknesses</h3>
-              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                {analysis.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
-              </ul>
-            </div>
-          </div>
-
-          {analysis.missing_requirements.length > 0 && (
-            <div className="mb-4">
-              <h3 className="font-medium text-orange-700 mb-2">Missing Requirements</h3>
-              <div className="flex flex-wrap gap-2">
-                {analysis.missing_requirements.map((r, i) => (
-                  <span key={i} className="px-2 py.5 text-xs bg-orange-50 text-orange-700 rounded-full">{r}</span>
-                ))}
+      <Reveal y={18}>
+        <div className="glass-card relative overflow-hidden rounded-3xl p-6 md:p-8">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-gold/15 blur-3xl" />
+          <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="font-display text-3xl font-semibold tracking-tight">
+                  {profile.name || 'Unnamed Candidate'}
+                </h1>
+                <Select value={profile.status || 'new'} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="h-8 w-36 rounded-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                {profile.email && (
+                  <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{profile.email}</span>
+                )}
+                {profile.phone && (
+                  <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{profile.phone}</span>
+                )}
+                {profile.location && (
+                  <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{profile.location}</span>
+                )}
+              </div>
+              <div className="mt-3 flex gap-4">
+                {profile.linkedin && (
+                  <a href={profile.linkedin} className="flex items-center gap-1.5 text-sm font-medium text-gold hover:underline" target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" /> LinkedIn
+                  </a>
+                )}
+                {profile.github && (
+                  <a href={profile.github} className="flex items-center gap-1.5 text-sm font-medium text-gold hover:underline" target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" /> GitHub
+                  </a>
+                )}
               </div>
             </div>
-          )}
-
-          <div className="p-3 rounded-lg text-sm font-medium" style={{
-            backgroundColor: analysis.recommendation === 'Strongly Recommend' ? '#dcfce7' :
-              analysis.recommendation === 'Recommend' ? '#dbeafe' :
-              analysis.recommendation === 'Consider' ? '#fef9c3' : '#fee2e2',
-            color: analysis.recommendation === 'Strongly Recommend' ? '#166534' :
-              analysis.recommendation === 'Recommend' ? '#1e40af' :
-              analysis.recommendation === 'Consider' ? '#854d0e' : '#991b1b',
-          }}>
-            {analysis.recommendation}
+            <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
+              {profile.category && (
+                <Badge variant={categoryVariants[profile.category] || 'secondary'} className="capitalize">
+                  {profile.category.replace('_', ' ')}
+                </Badge>
+              )}
+              {profile.overall_score !== null && (
+                <div className="flex items-baseline gap-1">
+                  <span className={cn('text-4xl font-bold tracking-tight', scoreTone)}>
+                    {profile.overall_score.toFixed(0)}%
+                  </span>
+                  <span className="text-sm text-muted-foreground">match</span>
+                </div>
+              )}
+            </div>
           </div>
-
-          <p className="text-sm text-gray-600 mt-3">{analysis.summary}</p>
         </div>
-      )}
+      </Reveal>
+
+      <Stagger className="space-y-5" staggerChildren={0.05}>
+        {profile.summary && (
+          <Section icon={<FileText className="h-4 w-4" />} title="Summary">
+            <p className="text-pretty text-muted-foreground">{profile.summary}</p>
+          </Section>
+        )}
+
+        {profile.skills && profile.skills.length > 0 && (
+          <Section icon={<Sparkles className="h-4 w-4" />} title={`Skills (${profile.skills.length})`}>
+            <div className="flex flex-wrap gap-2">
+              {profile.skills.map((s, i) => (
+                <Badge key={i} variant="info">{s}</Badge>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {profile.experience && profile.experience.length > 0 && (
+          <Section icon={<Briefcase className="h-4 w-4" />} title="Experience">
+            <div className="space-y-5">
+              {profile.experience.map((exp, i) => (
+                <motion.div key={i} variants={staggerItem} className="relative border-l-2 border-gold/40 pl-4">
+                  <span className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full gold-gradient" />
+                  <h3 className="font-semibold">{exp.title}</h3>
+                  <p className="text-sm text-muted-foreground">{exp.company} · {exp.duration}</p>
+                  {exp.description && <p className="mt-1 text-sm text-muted-foreground">{exp.description}</p>}
+                </motion.div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {profile.education && profile.education.length > 0 && (
+          <Section icon={<GraduationCap className="h-4 w-4" />} title="Education">
+            <div className="space-y-3">
+              {profile.education.map((edu, i) => (
+                <motion.div key={i} variants={staggerItem}>
+                  <h3 className="font-semibold">{edu.degree}</h3>
+                  <p className="text-sm text-muted-foreground">{edu.institution} · {edu.year}</p>
+                </motion.div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        <Section icon={<StickyNote className="h-4 w-4" />} title="Notes">
+          <Textarea
+            value={notes}
+            onChange={(e) => { setNotes(e.target.value); setSaved(false); }}
+            placeholder="Add private notes about this candidate..."
+            rows={3}
+          />
+          <Button
+            onClick={handleSaveNotes}
+            disabled={saving}
+            variant={saved ? 'secondary' : 'outline'}
+            className="mt-3"
+          >
+            {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save Notes'}
+          </Button>
+        </Section>
+
+        <Section
+          icon={<Sparkles className="h-4 w-4" />}
+          title="Analyze Against Job Description"
+          desc="Score this candidate against any job description with AI."
+        >
+          <Textarea
+            value={jobDesc}
+            onChange={(e) => setJobDesc(e.target.value)}
+            placeholder="Paste job description here..."
+            rows={4}
+          />
+          <Button onClick={handleAnalyze} disabled={analyzing || !jobDesc.trim()} variant="gold" className="mt-3">
+            {analyzing ? (
+              <>
+                <span className="animate-pulse">Analyzing…</span>
+              </>
+            ) : (
+              'Analyze'
+            )}
+          </Button>
+        </Section>
+
+        {analysis && (
+          <Section icon={<Sparkles className="h-4 w-4 text-gold" />} title="Analysis Results">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <ScoreBox label="Overall" value={analysis.overall_score} accent />
+              <ScoreBox label="Skills" value={analysis.scores.skills_score} />
+              <ScoreBox label="Experience" value={analysis.scores.experience_score} />
+              <ScoreBox label="Education" value={analysis.scores.education_score} />
+              <ScoreBox label="Certs" value={analysis.scores.certification_score} />
+              <ScoreBox label="Projects" value={analysis.scores.project_score} />
+            </div>
+
+            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+                <h3 className="mb-2 font-medium text-emerald-600 dark:text-emerald-400">Strengths</h3>
+                <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                  {analysis.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+              <div className="rounded-2xl border border-destructive/25 bg-destructive/5 p-4">
+                <h3 className="mb-2 font-medium text-destructive">Weaknesses</h3>
+                <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                  {analysis.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              </div>
+            </div>
+
+            {analysis.missing_requirements.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-2 font-medium text-amber-600 dark:text-amber-400">Missing Requirements</h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.missing_requirements.map((r, i) => (
+                    <Badge key={i} variant="warning">{r}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={cn(
+              'rounded-xl p-4 text-sm font-medium',
+              analysis.recommendation === 'Strongly Recommend' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' :
+              analysis.recommendation === 'Recommend' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-300' :
+              analysis.recommendation === 'Consider' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300' :
+              'bg-destructive/10 text-destructive',
+            )}>
+              {analysis.recommendation}
+            </div>
+
+            <p className="mt-3 text-sm text-muted-foreground">{analysis.summary}</p>
+          </Section>
+        )}
+      </Stagger>
     </div>
   );
 }
 
-function ScoreBox({ label, value }: { label: string; value: number }) {
+function Section({ icon, title, desc, children }: { icon: React.ReactNode; title: string; desc?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3 text-center">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-xl font-bold text-gray-800">{value.toFixed(0)}%</p>
+    <motion.section variants={staggerItem} className="glass-card rounded-2xl p-6">
+      <div className="mb-4 flex items-center gap-2.5">
+        <span className="grid h-8 w-8 place-items-center rounded-lg gold-gradient shadow-md shadow-gold/20">
+          {icon}
+        </span>
+        <div>
+          <h2 className="font-semibold tracking-tight">{title}</h2>
+          {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+        </div>
+      </div>
+      {children}
+    </motion.section>
+  );
+}
+
+function ScoreBox({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className={cn(
+      'rounded-xl border p-3 text-center transition-all duration-300 hover:-translate-y-0.5',
+      accent ? 'border-gold/40 bg-gold-soft/40' : 'border-border/70 bg-background/40',
+    )}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn('text-xl font-bold', accent ? 'gold-gradient-text' : 'text-foreground')}>
+        {value.toFixed(0)}%
+      </p>
     </div>
   );
 }

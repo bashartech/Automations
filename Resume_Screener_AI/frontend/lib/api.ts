@@ -2,6 +2,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 // ---- Auth helpers ----
 const TOKEN_KEY = 'auth_token';
+const COMPANY_ID_KEY = 'company_id';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -14,10 +15,21 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(COMPANY_ID_KEY);
 }
 
 export function isAuthenticated(): boolean {
   return !!getToken();
+}
+
+export function setCompanyId(id: string | null): void {
+  if (id) localStorage.setItem(COMPANY_ID_KEY, id);
+  else localStorage.removeItem(COMPANY_ID_KEY);
+}
+
+export function getCompanyId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(COMPANY_ID_KEY);
 }
 
 function authHeaders(): Record<string, string> {
@@ -33,7 +45,8 @@ function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
     Object.keys(h).forEach(k => { headers[k] = h[k]; });
   }
   Object.assign(headers, authHeaders());
-  if (!headers['Content-Type'] && !(options.body instanceof FormData)) {
+  const hasBody = options.body && !(options.body instanceof FormData);
+  if (hasBody && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
   return fetch(url, { ...options, headers });
@@ -41,13 +54,14 @@ function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
 
 export interface AuthResponse {
   token: string;
-  user: { id: string; email: string; name: string };
+  user: { id: string; email: string; name: string; role?: string; company_id?: string | null };
 }
 
 export interface UserResponse {
   id: string;
   email: string;
   name: string;
+  company_id?: string | null;
   created_at: string;
 }
 
@@ -129,6 +143,177 @@ export interface DashboardMetrics {
   duplicate_candidates: number;
   average_match_score: number;
   category_distribution: Record<string, number>;
+  total_jobs: number;
+  total_candidates: number;
+  total_interviews: number;
+  total_rejected: number;
+  total_selected: number;
+  avg_processing_time_seconds: number;
+  top_skills: string[];
+  funnel: Record<string, number>;
+}
+
+// ── Company ──
+export interface CompanyResponse {
+  id: string; name: string; logo_url: string | null;
+  industry: string | null; company_size: string | null;
+  website: string | null; country: string | null; city: string | null;
+  timezone: string | null; hr_email: string | null; contact_number: string | null;
+  created_at: string; updated_at: string;
+}
+
+export interface CompanyCreate {
+  name: string; industry?: string; company_size?: string;
+  website?: string; country?: string; city?: string;
+  timezone?: string; hr_email?: string; contact_number?: string;
+}
+
+export interface CompanyUpdate {
+  name?: string; logo_url?: string; industry?: string;
+  company_size?: string; website?: string; country?: string;
+  city?: string; timezone?: string; hr_email?: string; contact_number?: string;
+}
+
+// ── Company Knowledge ──
+export interface CompanyKnowledge {
+  id: string; company_id: string;
+  mission: string | null; vision: string | null; culture: string | null;
+  core_values: string[] | null; work_environment: string | null;
+  remote_policy: string | null; working_hours: string | null;
+  interview_process: string | null; interview_stages: string[] | null;
+  hiring_policy: string | null; required_documents: string[] | null;
+  preferred_skills: string[] | null; communication_style: string | null;
+  interview_days: number[] | null; interview_time_slots: string[] | null;
+  meeting_duration: number; timezone: string | null;
+  created_at: string; updated_at: string;
+}
+
+export interface CompanyKnowledgeUpdate {
+  mission?: string; vision?: string; culture?: string;
+  core_values?: string[]; work_environment?: string;
+  remote_policy?: string; working_hours?: string;
+  interview_process?: string; interview_stages?: string[];
+  hiring_policy?: string; required_documents?: string[];
+  preferred_skills?: string[]; communication_style?: string;
+  interview_days?: number[]; interview_time_slots?: string[];
+  meeting_duration?: number; timezone?: string;
+}
+
+// ── Email Templates ──
+export interface EmailTemplate {
+  id: string; company_id: string; type: string;
+  subject: string; body: string;
+  created_at: string; updated_at: string;
+}
+
+export interface EmailTemplateCreate { type: string; subject: string; body: string; }
+
+// ── Jobs ──
+export interface JobResponse {
+  id: string; company_id: string; department_id: string | null;
+  title: string; employment_type: string | null; location: string | null;
+  remote_type: string | null; experience_required: string | null;
+  salary_min: number | null; salary_max: number | null; currency: string | null;
+  num_openings: number; application_deadline: string | null;
+  required_skills: string[] | null; preferred_skills: string[] | null;
+  responsibilities: string[] | null; qualifications: string[] | null;
+  benefits: string[] | null; description: string | null;
+  status: string; created_by: string | null;
+  created_at: string; updated_at: string;
+}
+
+export interface JobCreate {
+  title: string; department_id?: string; employment_type?: string;
+  location?: string; remote_type?: string; experience_required?: string;
+  salary_min?: number; salary_max?: number; currency?: string;
+  num_openings?: number; application_deadline?: string;
+  required_skills?: string[]; preferred_skills?: string[];
+  responsibilities?: string[]; qualifications?: string[]; benefits?: string[];
+  description?: string;
+}
+
+export interface JDReviewResponse {
+  suggestions: string[]; missing_skills: string[];
+  grammar_issues: string[]; inclusive_language_suggestions: string[];
+  recommendation: string; overall_quality_score: number;
+  improved_description: string;
+}
+
+export interface JDReviewRequest {
+  title: string; description: string; required_skills?: string[];
+}
+
+// ── Interviews ──
+export interface InterviewResponse {
+  id: string; company_id: string; job_id: string | null;
+  candidate_id: string; candidate_name: string | null;
+  date: string; time: string; timezone: string;
+  meeting_link: string | null; interviewer: string | null;
+  interview_round: number; status: string; notes: string | null;
+  created_at: string; updated_at: string;
+}
+
+export interface InterviewCreate {
+  job_id?: string; candidate_id: string;
+  date: string; time: string; timezone?: string;
+  interviewer?: string; interview_round?: number; notes?: string;
+}
+
+export interface InterviewSlot {
+  id: string; company_id: string; day_of_week: number;
+  start_time: string; end_time: string; is_available: boolean;
+  created_at: string;
+}
+
+export interface InterviewSlotCreate {
+  day_of_week: number; start_time: string; end_time: string; is_available?: boolean;
+}
+
+// ── Notifications ──
+export interface NotificationResponse {
+  id: string; company_id: string; user_id: string | null;
+  type: string; title: string; message: string;
+  link: string | null; read: boolean; created_at: string;
+}
+
+// ── Activity Logs ──
+export interface ActivityLogResponse {
+  id: string; company_id: string | null; user_id: string | null;
+  action: string; entity_type: string; entity_id: string | null;
+  details: Record<string, any> | null; created_at: string;
+}
+
+// ── Admin ──
+export interface FailedTask {
+  id: string; task_name: string; task_id: string | null;
+  correlation_id: string | null; entity_id: string | null;
+  error_message: string; traceback: string | null;
+  retry_count: number; resolved: boolean; created_at: string;
+}
+
+export interface TaskLog {
+  id: string; task_name: string; correlation_id: string | null;
+  entity_id: string | null; status: string; message: string | null;
+  duration_ms: number | null; created_at: string;
+}
+
+// ── Department ──
+export interface DepartmentResponse {
+  id: string; company_id: string; name: string; created_at: string;
+}
+
+// ── Analyze V2 ──
+export interface AnalyzeResponseV2 {
+  candidate_id: string; job_id: string; candidate_name: string | null;
+  scores: {
+    overall_score: number; technical_score: number;
+    experience_score: number; skill_match_score: number;
+    education_score: number; project_score: number;
+    culture_fit_score: number; confidence_score: number;
+  };
+  missing_skills: string[]; strengths: string[]; weaknesses: string[];
+  risks: string[]; recommendation: string; explanation: string;
+  category: string;
 }
 
 export interface WeightsResponse {
@@ -196,7 +381,9 @@ export const authApi = {
       body: JSON.stringify({ name, email, password }),
     });
     if (!res.ok) return handleError(res);
-    return res.json();
+    const data: AuthResponse = await res.json();
+    if (data.user?.company_id) setCompanyId(data.user.company_id);
+    return data;
   },
 
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -205,13 +392,17 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) return handleError(res);
-    return res.json();
+    const data: AuthResponse = await res.json();
+    if (data.user?.company_id) setCompanyId(data.user.company_id);
+    return data;
   },
 
   async me(): Promise<UserResponse> {
     const res = await apiFetch(`${API_BASE_URL}/api/auth/me`);
     if (!res.ok) return handleError(res);
-    return res.json();
+    const data: UserResponse = await res.json();
+    if (data.company_id) setCompanyId(data.company_id);
+    return data;
   },
 };
 
@@ -251,13 +442,14 @@ export const api = {
     return res.json();
   },
 
-  async getCandidates(category?: string, resumeId?: string, batchId?: string, minScore?: number, status?: string): Promise<CandidateProfile[]> {
+  async getCandidates(category?: string, resumeId?: string, batchId?: string, minScore?: number, status?: string, search?: string): Promise<CandidateProfile[]> {
     const params = new URLSearchParams();
     if (category) params.set('category', category);
     if (resumeId) params.set('resume_id', resumeId);
     if (batchId) params.set('batch_id', batchId);
     if (minScore !== undefined) params.set('min_score', String(minScore));
     if (status) params.set('status', status);
+    if (search) params.set('search', search);
     const qs = params.toString();
     const res = await apiFetch(`${API_BASE_URL}/api/candidates/${qs ? '?' + qs : ''}`);
     if (!res.ok) return handleError(res);
@@ -456,5 +648,217 @@ export const api = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  },
+
+  // ── Company ──
+  async registerCompany(data: CompanyCreate): Promise<CompanyResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/auth/register-company`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    const company: CompanyResponse = await res.json();
+    setCompanyId(company.id);
+    return company;
+  },
+  async getCompany(id: string): Promise<CompanyResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${id}`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async updateCompany(id: string, data: CompanyUpdate): Promise<CompanyResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async createDepartment(companyId: string, name: string): Promise<DepartmentResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/departments`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getDepartments(companyId: string): Promise<DepartmentResponse[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/departments`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getKnowledge(companyId: string): Promise<CompanyKnowledge> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/knowledge`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async updateKnowledge(companyId: string, data: CompanyKnowledgeUpdate): Promise<CompanyKnowledge> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/knowledge`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async uploadKnowledgeDoc(companyId: string, file: File): Promise<{ knowledge: CompanyKnowledge; document_id: string; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/knowledge/extract`, { method: 'POST', body: formData });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getEmailTemplates(companyId: string): Promise<EmailTemplate[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/email-templates`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async createEmailTemplate(companyId: string, data: EmailTemplateCreate): Promise<EmailTemplate> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/email-templates`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async updateEmailTemplate(companyId: string, id: string, data: Partial<EmailTemplateCreate>): Promise<EmailTemplate> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/email-templates/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+
+  // ── Jobs ──
+  async createJob(companyId: string, data: JobCreate): Promise<JobResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getJobs(companyId: string): Promise<JobResponse[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getJob(companyId: string, id: string): Promise<JobResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs/${id}`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async updateJob(companyId: string, id: string, data: Partial<JobCreate>): Promise<JobResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async deleteJob(companyId: string, id: string): Promise<void> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs/${id}`, { method: 'DELETE' });
+    if (!res.ok) return handleError(res);
+  },
+  async reviewJobDescription(companyId: string, jobId: string): Promise<JDReviewResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs/${jobId}/review`, {
+      method: 'POST',
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async reviewJobDescriptionDraft(companyId: string, data: JDReviewRequest): Promise<JDReviewResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/v1/companies/${companyId}/jobs/review`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+
+  // ── Interviews ──
+  async getInterviews(): Promise<InterviewResponse[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getInterviewCandidates(search?: string): Promise<{ id: string; name: string | null; email: string | null; overall_score: number | null }[]> {
+    const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/candidates${qs}`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getInterview(id: string): Promise<InterviewResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/${id}`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async createInterview(data: InterviewCreate): Promise<InterviewResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async updateInterview(id: string, data: Partial<InterviewCreate & { status: string }>): Promise<InterviewResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async cancelInterview(id: string): Promise<InterviewResponse> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/${id}/cancel`, { method: 'POST' });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getInterviewSlots(): Promise<InterviewSlot[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/slots`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async createInterviewSlot(data: InterviewSlotCreate): Promise<InterviewSlot> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/slots`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async deleteInterviewSlot(id: string): Promise<void> {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews/slots/${id}`, { method: 'DELETE' });
+    if (!res.ok) return handleError(res);
+  },
+
+  // ── Notifications ──
+  async getNotifications(): Promise<NotificationResponse[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/notifications`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async markNotificationRead(id: string): Promise<void> {
+    const res = await apiFetch(`${API_BASE_URL}/api/notifications/${id}/read`, { method: 'POST' });
+    if (!res.ok) return handleError(res);
+  },
+
+  // ── Activity Logs ──
+  async getActivityLogs(): Promise<ActivityLogResponse[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/notifications/activity-logs`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+
+  // ── Admin ──
+  async getFailedTasks(): Promise<FailedTask[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/admin/failed-tasks`);
+    if (!res.ok) return handleError(res);
+    return res.json();
+  },
+  async getTaskLogs(): Promise<TaskLog[]> {
+    const res = await apiFetch(`${API_BASE_URL}/api/admin/task-logs`);
+    if (!res.ok) return handleError(res);
+    return res.json();
   },
 };

@@ -2,7 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Search as SearchIcon, Sparkles, UserRound } from 'lucide-react';
 import { api, SearchResult } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/page-header';
+import { Reveal, Stagger, staggerItem } from '@/components/motion/reveal';
+import { cn } from '@/lib/utils';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
@@ -25,68 +33,102 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Semantic Search</h1>
-
-      <div className="flex gap-3 mb-8">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder="e.g. React developer with 3 years experience"
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    <div className="mx-auto max-w-4xl space-y-6">
+      <Reveal y={14}>
+        <PageHeader
+          eyebrow="AI Tooling"
+          title="Semantic Search"
+          description="Find the right candidates by meaning — not just keywords."
         />
-        <button
-          onClick={handleSearch}
-          disabled={loading || !query.trim()}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-        >
-          {loading ? 'Searching...' : 'Search'}
-        </button>
-      </div>
+      </Reveal>
 
-      {loading && <p className="text-gray-500">Searching candidates...</p>}
+      <Reveal y={18}>
+        <div className="glass-card rounded-3xl p-6">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="e.g. React developer with 3 years experience"
+                className="pl-9"
+              />
+            </div>
+            <Button variant="gold" onClick={handleSearch} disabled={loading || !query.trim()} className="gap-1.5">
+              <SearchIcon className="h-4 w-4" />
+              {loading ? 'Searching...' : 'Search'}
+            </Button>
+          </div>
+        </div>
+      </Reveal>
 
-      {!loading && searched && results.length === 0 && (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500 text-lg">No candidates found</p>
-          <p className="text-gray-400 mt-1">Try a different search query</p>
+      {loading && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Sparkles className="h-4 w-4 animate-pulse text-gold" /> Searching candidates...
         </div>
       )}
 
+      {!loading && searched && results.length === 0 && (
+        <Reveal>
+          <div className="glass-card rounded-3xl p-12 text-center">
+            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl gold-gradient shadow-lg shadow-gold/20">
+              <SearchIcon className="h-6 w-6" />
+            </div>
+            <h3 className="font-display text-lg font-semibold">No candidates found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Try a different search query</p>
+          </div>
+        </Reveal>
+      )}
+
       {results.length > 0 && (
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500">{results.length} result{results.length > 1 ? 's' : ''}</p>
-          {results.map((r) => (
-            <Link
-              key={r.id}
-              href={`/candidates/${r.id}`}
-              className="bg-white rounded-lg shadow p-5 hover:shadow-md transition-shadow block"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{r.name || 'Unnamed Candidate'}</h3>
-                  {r.email && <p className="text-sm text-gray-500">{r.email}</p>}
-                  {r.summary && <p className="text-sm text-gray-600 mt-1 line-clamp-2">{r.summary}</p>}
-                  {r.skills && r.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {r.skills.slice(0, 4).map((s, i) => (
-                        <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s}</span>
-                      ))}
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">{results.length} result{results.length > 1 ? 's' : ''}</p>
+          <Stagger className="space-y-3" staggerChildren={0.05}>
+            {results.map((r) => {
+              const relevance = Math.round((r.relevance_score || 0) * 100);
+              return (
+                <motion.div key={r.id} variants={staggerItem}>
+                  <Link href={`/candidates/${r.id}`} className="group block">
+                    <div className="glass-card rounded-2xl p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/40 hover:shadow-xl hover:shadow-gold/5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1.5">
+                          <h3 className="flex items-center gap-2 font-semibold group-hover:text-gold transition-colors">
+                            <UserRound className="h-4 w-4 text-gold" />
+                            {r.name || 'Unnamed Candidate'}
+                          </h3>
+                          {r.email && <p className="text-sm text-muted-foreground">{r.email}</p>}
+                          {r.summary && <p className="line-clamp-2 text-sm text-muted-foreground">{r.summary}</p>}
+                          {r.skills && r.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {r.skills.slice(0, 4).map((s, i) => (
+                                <Badge key={i} variant="info" className="text-xs">{s}</Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs text-muted-foreground">Relevance</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className={cn(
+                              'text-lg font-bold',
+                              relevance >= 70 ? 'text-emerald-500' : relevance >= 40 ? 'gold-gradient-text' : 'text-muted-foreground',
+                            )}>
+                              {relevance}%
+                            </p>
+                          </div>
+                          {r.overall_score !== null && (
+                            <p className="mt-1 text-xs text-muted-foreground">Score: {r.overall_score.toFixed(0)}%</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Relevance</p>
-                  <p className="text-lg font-bold text-blue-600">{(r.relevance_score * 100).toFixed(0)}%</p>
-                  {r.overall_score !== null && (
-                    <p className="text-xs text-gray-400 mt-1">Score: {r.overall_score.toFixed(0)}%</p>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))}
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </Stagger>
         </div>
       )}
     </div>

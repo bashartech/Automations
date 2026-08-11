@@ -1,0 +1,70 @@
+{
+  "description": "Golden resume test set for accuracy validation. Each entry contains a resume, a job description, and the expected analysis outputs. Expected scores are ranges (min, max) to account for LLM variation.",
+  "resumes": [
+    {
+      "id": "golden_01_python_backend",
+      "label": "Strong Python backend match",
+      "resume_text": "Alice Smith\nalice@email.com | 555-0101\n\nSUMMARY\nSenior Backend Engineer with 7 years building distributed systems in Python.\n\nSKILLS\nPython, FastAPI, PostgreSQL, Docker, Kubernetes, AWS, Redis, GraphQL, Celery, pytest\n\nEXPERIENCE\nStaff Backend Engineer | DataFlow Inc | 2021-2024\n- Designed event-driven microservices handling 500k req/s\n- Reduced p99 latency from 800ms to 120ms\n- Led migration from monolith to 12 microservices\n\nSenior Backend Engineer | CloudScale | 2018-2021\n- Built REST/GraphQL APIs for 10M+ user platform\n- Implemented CI/CD pipelines with GitHub Actions\n\nBackend Developer | StartKit | 2017-2018\n- Built Python-based ETL pipelines\n\nEDUCATION\nM.S. Computer Science | MIT | 2017\nB.S. Computer Science | Cornell | 2015\n\nCERTIFICATIONS\nAWS Solutions Architect Professional, Kubernetes CKA\n\nPROJECTS\nOpen-source load balancer in Go | 2k GitHub stars",
+      "job_description": "Senior Backend Engineer\n\nWe need a senior backend engineer with strong Python and distributed systems experience.\n\nRequired:\n- Python, FastAPI, PostgreSQL\n- Docker, Kubernetes\n- AWS or GCP\n- 5+ years backend experience\n- Distributed systems design\n\nPreferred:\n- GraphQL, Redis\n- Microservices architecture\n- CI/CD pipelines\n- Performance optimization",
+      "expected": {
+        "overall_score": {"min": 85, "max": 100},
+        "technical_score": {"min": 85, "max": 100},
+        "skill_match_score": {"min": 90, "max": 100},
+        "experience_score": {"min": 85, "max": 100},
+        "recommendation": "interview"
+      }
+    },
+    {
+      "id": "golden_02_weak_match",
+      "label": "Weak frontend candidate for backend role",
+      "resume_text": "Bob Johnson\nbob@email.com | 555-0202\nPortfolio: bobcodes.dev\n\nSUMMARY\nCreative Frontend Developer with 3 years of experience in React and UI design.\n\nSKILLS\nJavaScript, React, CSS, HTML, Figma, Tailwind, Vue.js, Photoshop\n\nEXPERIENCE\nFrontend Developer | WebAgency | 2022-2024\n- Built responsive UIs with React and Tailwind\n- Created design system used across 5 products\n- Implemented animations and complex UI interactions\n\nJunior Developer | SmallCo | 2021-2022\n- Maintained WordPress sites\n- Built landing pages\n\nEDUCATION\nB.A. Graphic Design | School of Visual Arts | 2021\n\nPROJECTS\nPortfolio website with Three.js animations",
+      "job_description": "Senior Backend Engineer (same as golden_01)",
+      "expected": {
+        "overall_score": {"min": 10, "max": 35},
+        "technical_score": {"min": 5, "max": 30},
+        "skill_match_score": {"min": 5, "max": 25},
+        "experience_score": {"min": 10, "max": 35},
+        "recommendation": "reject"
+      }
+    },
+    {
+      "id": "golden_03_moderate_match",
+      "label": "Moderate match — good experience, missing key skills",
+      "resume_text": "Carol Davis\ncarol@email.com | 555-0303\n\nSUMMARY\nSenior Software Engineer with 6 years experience in Java and Go, transitioning to Python.\n\nSKILLS\nJava, Go, Spring Boot, PostgreSQL, Docker, Jenkins, Terraform, Kafka, Cassandra\n\nEXPERIENCE\nSenior Engineer | EnterpriseCorp | 2020-2024\n- Built high-throughput transaction processing system in Java\n- Managed 50+ microservices with Kubernetes\n- Reduced deployment time with Jenkins pipelines\n\nSoftware Engineer | MidSizeCo | 2018-2020\n- Built REST APIs in Java Spring Boot\n- Worked with PostgreSQL and Redis\n\nEDUCATION\nB.S. Computer Science | University of Michigan | 2018\n\nCERTIFICATIONS\nAWS Developer Associate",
+      "job_description": "Senior Backend Engineer (same as golden_01)",
+      "expected": {
+        "overall_score": {"min": 50, "max": 75},
+        "technical_score": {"min": 50, "max": 75},
+        "skill_match_score": {"min": 40, "max": 65},
+        "experience_score": {"min": 65, "max": 85},
+        "recommendation": "consider"
+      }
+    },
+    {
+      "id": "golden_04_highly_experienced",
+      "label": "Highly experienced but overqualified",
+      "resume_text": "Dr. Diana Chen\ndiana@email.com | 555-0404\nlinkedin.com/in/dianachen\n\nSUMMARY\nDistributed Systems Architect with 15+ years experience. PhD in Computer Science. Built systems at Google and Amazon.\n\nSKILLS\nPython, C++, Go, Rust, Kubernetes, AWS, Azure, GCP, TensorFlow, Kafka, Cassandra, Spanner, Redis, Memcached, gRPC, Protobuf, Envoy, Istio\n\nEXPERIENCE\nPrincipal Engineer | Google | 2018-2024\n- Designed global-scale distributed storage system\n- Led 20-person engineering team\n- Reduced storage costs by 30% through optimization\n\nSenior Staff Engineer | Amazon | 2014-2018\n- Built AWS Lambda compute platform\n- Architected multi-region failover system\n\nStaff Engineer | Microsoft | 2010-2014\n- Worked on Azure Cosmos DB\n\nEDUCATION\nPh.D. Computer Science | Carnegie Mellon | 2010\nM.S. Computer Science | Stanford | 2007\nB.S. Computer Science | Caltech | 2005\n\nCERTIFICATIONS\nGoogle Cloud Architect, AWS Solutions Architect, Azure Solutions Architect\n\nPUBLICATIONS\n12 peer-reviewed papers on distributed systems",
+      "job_description": "Senior Backend Engineer (same as golden_01)",
+      "expected": {
+        "overall_score": {"min": 80, "max": 95},
+        "technical_score": {"min": 90, "max": 100},
+        "skill_match_score": {"min": 85, "max": 100},
+        "experience_score": {"min": 90, "max": 100},
+        "recommendation": "interview"
+      }
+    },
+    {
+      "id": "golden_05_reject",
+      "label": "Clear reject — junior, wrong stack",
+      "resume_text": "Eve Williams\neve@email.com | 555-0505\n\nSUMMARY\nJunior developer with 1 year experience in mobile development.\n\nSKILLS\nSwift, Kotlin, Firebase, Android Studio, Xcode, Flutter\n\nEXPERIENCE\nJunior Mobile Developer | AppBros | 2025-2026\n- Built iOS app with SwiftUI\n- Fixed bugs in Android app\n- Wrote unit tests\n\nIntern | TechStart | 2024 (3 months)\n- Assisted with mobile app testing\n\nEDUCATION\nB.S. Computer Science | State University | 2025\n\nPROJECTS\nPersonal finance tracker app (100+ downloads)",
+      "job_description": "Senior Backend Engineer\n\nWe need a senior backend engineer with strong Python and distributed systems experience.\n\nRequired:\n- Python, FastAPI, PostgreSQL\n- Docker, Kubernetes\n- AWS or GCP\n- 5+ years backend experience\n\nPreferred:\n- GraphQL, Redis\n- Microservices architecture",
+      "expected": {
+        "overall_score": {"min": 0, "max": 20},
+        "technical_score": {"min": 0, "max": 15},
+        "skill_match_score": {"min": 0, "max": 10},
+        "experience_score": {"min": 0, "max": 15},
+        "recommendation": "reject"
+      }
+    }
+  ]
+}
