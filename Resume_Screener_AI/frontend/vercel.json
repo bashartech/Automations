@@ -1,3 +1,9 @@
 {
-  "version": 2
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://rsn-alb-1798327073.ap-southeast-1.elb.amazonaws.com/api/:path*"
+    }
+  ]
 }

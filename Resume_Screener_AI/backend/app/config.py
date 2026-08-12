@@ -3,12 +3,20 @@ import sys
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
-# Configure Tesseract OCR path - MUST be done before any pytesseract import
-TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-TESSERACT_DIR = r'C:\Program Files\Tesseract-OCR'
+# Configure Tesseract OCR path - MUST be done before any pytesseract import.
+# Precedence: TESSERACT_CMD env var (Set in Docker via ENV) > OS default.
+_env_tesseract = os.environ.get('TESSERACT_CMD', '').strip()
+if _env_tesseract:
+    TESSERACT_CMD = _env_tesseract
+elif sys.platform == 'win32':
+    TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+else:
+    TESSERACT_CMD = '/usr/bin/tesseract'
+
+TESSERACT_DIR = os.path.dirname(TESSERACT_CMD)
 
 # Add Tesseract to system PATH
-if TESSERACT_DIR not in os.environ.get('PATH', ''):
+if TESSERACT_DIR and TESSERACT_DIR not in os.environ.get('PATH', ''):
     os.environ['PATH'] = TESSERACT_DIR + os.pathsep + os.environ.get('PATH', '')
 
 # Now configure pytesseract
