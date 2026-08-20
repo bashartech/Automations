@@ -451,7 +451,7 @@ export const api = {
     if (status) params.set('status', status);
     if (search) params.set('search', search);
     const qs = params.toString();
-    const res = await apiFetch(`${API_BASE_URL}/api/candidates/${qs ? '?' + qs : ''}`);
+    const res = await apiFetch(`${API_BASE_URL}/api/candidates${qs ? '?' + qs : ''}`); 
     if (!res.ok) return handleError(res);
     return res.json();
   },
@@ -546,7 +546,7 @@ export const api = {
   },
 
   async getBatches(): Promise<ProcessingJobResponse[]> {
-    const res = await apiFetch(`${API_BASE_URL}/api/resumes/batches/`);
+    const res = await apiFetch(`${API_BASE_URL}/api/resumes/batches`);
     if (!res.ok) return handleError(res);
     return res.json();
   },
@@ -778,7 +778,7 @@ export const api = {
 
   // ── Interviews ──
   async getInterviews(): Promise<InterviewResponse[]> {
-    const res = await apiFetch(`${API_BASE_URL}/api/interviews/`);
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews`);
     if (!res.ok) return handleError(res);
     return res.json();
   },
@@ -794,7 +794,7 @@ export const api = {
     return res.json();
   },
   async createInterview(data: InterviewCreate): Promise<InterviewResponse> {
-    const res = await apiFetch(`${API_BASE_URL}/api/interviews/`, {
+    const res = await apiFetch(`${API_BASE_URL}/api/interviews`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });

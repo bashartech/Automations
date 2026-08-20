@@ -4,7 +4,7 @@ export function LogoMark({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'relative grid h-9 w-9 place-items-center rounded-xl gold-gradient shadow-lg shadow-gold/25',
+        'relative grid h-9 w-9 place-items-center rounded-xl primary-gradient shadow-lg shadow-primary/25',
         className,
       )}
     >
@@ -45,8 +45,8 @@ export function Wordmark({ className }: { className?: string }) {
     <div className={cn('flex items-center gap-2.5', className)}>
       <LogoMark />
       <div className="leading-tight">
-        <p className="font-display text-base font-semibold tracking-tight">Resume</p>
-        <p className="gold-gradient-text text-base font-semibold tracking-tight -mt-1">
+        <p className="text-base font-semibold tracking-tight">Resume</p>
+        <p className="primary-gradient-text -mt-1 text-base font-semibold tracking-tight">
           Screener AI
         </p>
       </div>

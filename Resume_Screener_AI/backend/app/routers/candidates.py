@@ -57,7 +57,7 @@ async def extract_profile(request: ProfileExtractRequest, db: AsyncSession = Dep
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/", response_model=List[CandidateProfileResponse])
+@router.get("", response_model=List[CandidateProfileResponse])
 async def list_candidates(
     category: Optional[str] = Query(None),
     resume_id: Optional[str] = Query(None),

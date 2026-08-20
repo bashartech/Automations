@@ -2,9 +2,12 @@
 Helper: Generate the Google OAuth authorization URL.
 
 Usage:
-    python google_auth_url.py <email> <password> [company_id]
+    python google_auth_url.py <email> <password> [company_id] [base_url]
 
 If company_id is omitted, the script uses your user's company_id.
+If base_url is omitted, it defaults to http://localhost:8002 (local backend).
+For production, pass the backend base URL, e.g.:
+    python google_auth_url.py <email> <password> <company_id> https://your-api-domain.com
 """
 import asyncio
 import sys
@@ -15,7 +18,7 @@ async def main():
     email = sys.argv[1] if len(sys.argv) > 1 else input("Email: ")
     password = sys.argv[2] if len(sys.argv) > 2 else input("Password: ")
 
-    base = "http://localhost:8002"
+    base = sys.argv[4] if len(sys.argv) > 4 else "http://localhost:8002"
 
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(

@@ -100,7 +100,7 @@ async def delete_slot(
 # ── Interview Scheduling ──
 
 
-@router.get("/", response_model=List[InterviewResponse])
+@router.get("", response_model=List[InterviewResponse])
 async def list_interviews(
     job_id: Optional[str] = Query(None),
     candidate_id: Optional[str] = Query(None),
@@ -162,7 +162,7 @@ async def get_interview(
     return resp
 
 
-@router.post("/", response_model=InterviewResponse, status_code=201)
+@router.post("", response_model=InterviewResponse, status_code=201)
 async def schedule_interview(
     data: InterviewCreate,
     db: AsyncSession = Depends(get_db),

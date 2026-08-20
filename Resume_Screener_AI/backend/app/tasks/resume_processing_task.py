@@ -43,13 +43,10 @@ def process_resume_file(self, job_id: str, file_index: int,
         return {"status": "success", "file_index": file_index}
     except Exception as exc:
         duration = int((time.monotonic() - start) * 1000)
-        cl.error("Resume processing failed", error=str(exc), job_id=job_id)
+        cl.error("Resume processing failed: %s: %s\n%s", type(exc).__name__, exc, traceback.format_exc())
         is_rate_limit = "429" in str(exc) or "RateLimitError" in type(exc).__name__
         if not is_rate_limit and self.request.retries < self.max_retries:
-            try:
-                self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
-            except Exception:
-                pass
+            raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
         try:
             asyncio.run(_increment_failed(job_id))
         except Exception:
@@ -153,13 +150,14 @@ async def _process_single_resume(text: str, resume_id: str, job_id: str, file_in
         exact_dups = await dup_service.check(profile)
         for dup in exact_dups:
             similarity = dup_service.compute_text_similarity(profile.raw_text, dup.raw_text)
-            await dup_service.create_duplicate_record(profile, dup, similarity, method="exact")
+            await dup_service.create_duplicate_record(profile, dup, similarity, method="exact", commit=False)
 
         embed_dups = await dup_service.check_embedding(profile, company_id=job.company_id if job else None)
         for dup, sim in embed_dups:
             already_flagged = any(d.id == dup.id for d in exact_dups)
             if not already_flagged:
-                await dup_service.create_duplicate_record(profile, dup, sim, method="embedding")
+                await dup_service.create_duplicate_record(profile, dup, sim, method="embedding", commit=False)
+        await db.commit()
         cl.info("Duplicate check complete")
 
         if job_description.strip():
@@ -243,13 +241,10 @@ def reanalyze_candidate(self, candidate_id: str, job_id: str, job_description: s
         asyncio.run(_reanalyze_single(candidate_id, job_description, job_id, cl))
         return {"status": "success", "candidate_id": candidate_id}
     except Exception as exc:
-        cl.error("Reanalyze failed", error=str(exc), candidate_id=candidate_id)
+        cl.error("Reanalyze failed: %s: %s\n%s", type(exc).__name__, exc, traceback.format_exc())
         is_rate_limit = "429" in str(exc) or "RateLimitError" in type(exc).__name__
         if not is_rate_limit and self.request.retries < self.max_retries:
-            try:
-                self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
-            except Exception:
-                pass
+            raise self.retry(exc=exc, countdown=30 * (self.request.retries + 1))
         try:
             asyncio.run(_increment_failed(job_id))
         except Exception:

@@ -23,7 +23,7 @@ export function MetricCard({
 }) {
   const accentClasses: Record<string, string> = {
     default: 'text-foreground',
-    gold: 'gold-gradient-text',
+    gold: 'primary-gradient-text',
     success: 'text-emerald-500',
     danger: 'text-destructive',
   };
@@ -33,7 +33,7 @@ export function MetricCard({
   return (
     <motion.div variants={staggerItem} custom={delay} initial="hidden" animate="visible" transition={{ delay }}>
       <Card className="group relative overflow-hidden">
-        <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-gold/10 blur-2xl transition-all duration-500 group-hover:bg-gold/20" />
+        <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-primary/10 blur-2xl transition-all duration-500 group-hover:bg-primary/20" />
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             {icon}

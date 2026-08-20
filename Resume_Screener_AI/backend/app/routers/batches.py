@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/resumes/batches", tags=["batches"])
 
 
-@router.get("/", response_model=List[ProcessingJobResponse])
+@router.get("", response_model=List[ProcessingJobResponse])
 async def list_batches(db: AsyncSession = Depends(get_db),
                        current_user: User = Depends(get_current_user)):
     repo = CandidateRepository(db, current_user.id)

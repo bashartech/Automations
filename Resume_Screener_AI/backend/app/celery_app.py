@@ -24,8 +24,8 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     worker_concurrency=4,
-    task_soft_time_limit=120,
-    task_time_limit=150,
+    task_soft_time_limit=600,
+    task_time_limit=900,
     # Priority queues
     task_queues={
         "high": {"exchange": "high", "routing_key": "high"},

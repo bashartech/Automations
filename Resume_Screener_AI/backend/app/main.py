@@ -19,7 +19,8 @@ from sqlalchemy import select
 app = FastAPI(
     title="Resume Screener AI API",
     description="AI-powered resume screening and matching system",
-    version="2.0.0"
+    version="2.0.0",
+    redirect_slashes=False
 )
 
 # CORS middleware

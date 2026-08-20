@@ -70,7 +70,7 @@ class DuplicateDetectionService:
 
     async def create_duplicate_record(
         self, candidate_1: CandidateProfile, candidate_2: CandidateProfile,
-        similarity: float, method: str = "exact"
+        similarity: float, method: str = "exact", commit: bool = True
     ) -> CandidateDuplicate:
         result = await self.repo.db.execute(
             select(CandidateDuplicate).where(
@@ -90,8 +90,9 @@ class DuplicateDetectionService:
         existing = result.scalar_one_or_none()
         if existing:
             existing.similarity = similarity
-            await self.repo.db.commit()
-            await self.repo.db.refresh(existing)
+            if commit:
+                await self.repo.db.commit()
+                await self.repo.db.refresh(existing)
             return existing
 
         dup = CandidateDuplicate(
@@ -102,8 +103,9 @@ class DuplicateDetectionService:
             method=method,
         )
         self.repo.db.add(dup)
-        await self.repo.db.commit()
-        await self.repo.db.refresh(dup)
+        if commit:
+            await self.repo.db.commit()
+            await self.repo.db.refresh(dup)
         return dup
 
     @staticmethod

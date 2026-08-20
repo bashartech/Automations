@@ -77,9 +77,10 @@ export function LandingHero() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-[42rem] opacity-60"
       >
-        <div className="animate-aurora absolute -right-24 -top-40 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle_at_center,color-mix(in_oklab,var(--gold)_30%,transparent),transparent_65%)] blur-2xl" />
+        <div className="animate-aurora absolute -right-24 -top-40 h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle_at_center,color-mix(in_oklab,var(--primary)_30%,transparent),transparent_65%)] blur-2xl" />
         <div className="animate-float-slow absolute -left-32 top-24 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle_at_center,color-mix(in_oklab,var(--ring)_26%,transparent),transparent_62%)] blur-2xl" />
       </div>
+      <div aria-hidden className="grid-bg pointer-events-none absolute inset-x-0 top-0 z-[1] h-[40rem]" />
 
       <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
         <Wordmark />
