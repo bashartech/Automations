@@ -94,7 +94,7 @@ async def startup():
 
 @app.get("/")
 async def root():
-    return {"message": "Resume Screener AI API", "status": "running"}
+    return {"message": "Resume Screener AI ", "status": "running"}
 
 @app.get("/api/health")
 async def health_check():
