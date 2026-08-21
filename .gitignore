@@ -118,3 +118,10 @@ Thumbs.db
 # Google credentials
 credentials.json
 token.json
+
+# SSH keys
+private
+private.pub
+
+# Debug logs
+_wh_debug.log

@@ -1,106 +1,145 @@
 # Resume Screener AI
 
-**AI-powered batch resume screening and candidate ranking system** — upload resumes in bulk, extract structured profiles via LLM, score and rank candidates against a job description, and manage the full HR workflow with authentication, credits, and payment processing.
+**AI-powered batch resume screening and candidate ranking platform** — upload resumes in bulk, extract structured profiles via LLM, score and rank candidates against job descriptions, detect duplicates, and manage the full hiring workflow with multi-tenant auth, credits, payments, and interview scheduling.
+
+Built on **Next.js + FastAPI + Celery**, deployed on **AWS ECS Fargate** with a **Neon PostgreSQL** database and **Upstash Redis** broker.
 
 ---
 
 ## Overview
 
-Resume Screener AI automates the entire hiring pipeline from resume ingestion to candidate comparison. Built for production-scale use, it supports batch processing, OCR-based text extraction from PDFs and images, AI-powered skill extraction and scoring, duplicate detection, and a full HR workflow with notes, tags, status tracking, compare tool, and CSV export.
+Resume Screener AI automates the entire hiring pipeline — from resume ingestion to candidate comparison and interview scheduling. It supports:
 
-The system uses Groq (via OpenAI SDK) as the primary inference provider with automatic rate-limit handling and worker-concurrency control.
+- Batch processing of PDF, DOCX, PNG, JPG, BMP, TIFF and TXT resumes
+- OCR-based text extraction (Tesseract) for scanned documents
+- AI-powered structured profile extraction (Groq / Gemini)
+- Candidate scoring and ranking against a job description (0–100)
+- Duplicate detection via exact fields + embedding cosine similarity
+- Full multi-tenant HR workflow: companies, departments, jobs, interviews, notes, tags, status, compare, CSV export
+- Credit-based billing with Stripe checkout + webhook fulfillment
+- Interview scheduling with ICS calendar invites and Google Calendar integration
+
+The backend runs three containerized services on AWS ECS Fargate (API, Celery worker, Celery beat), all configured from a single Secrets Manager secret.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────┐     ┌───────────────┐     ┌────────────┐
-│   Next.js 16  │────▶│  FastAPI       │────▶│  PostgreSQL │
-│   (Vercel)    │     │  (HS Spaces)   │     │  (Neon)     │
-└──────────────┘     └───────┬───────┘     └────────────┘
-                             │
-                    ┌────────┴────────┐
-                    │  Celery Worker  │
-                    │  (Redis Broker) │
-                    └────────┬────────┘
-                             │
-                    ┌────────┴────────┐
-                    │   Qdrant        │
-                    │  (Vector DB)    │
-                    └─────────────────┘
+┌──────────────┐   vercel.json proxy   ┌──────────────────────────────┐
+│  Next.js 16  │────── /api/* ───────▶ │  AWS ECS Fargate (rsn-cluster)│
+│   (Vercel)   │                       │  ┌─────────────────────────┐ │
+└──────────────┘                       │  │  rsn-api  (uvicorn:8002) │ │
+                                       │  └─────────────────────────┘ │
+                                       │  ┌─────────────────────────┐ │
+                                       │  │ rsn-worker (Celery ×4)  │ │
+                                       │  └─────────────────────────┘ │
+                                       │  ┌─────────────────────────┐ │
+                                       │  │  rsn-beat   (scheduler) │ │
+                                       │  └─────────────────────────┘ │
+                                       └──────────────┬───────────────┘
+                                                      │
+              ┌───────────────────┬───────────────────┼───────────────────┐
+              │                   │                   │                   │
+    ┌─────────▼────────┐  ┌───────▼──────┐   ┌────────▼────────┐  ┌───────▼────────┐
+    │ Neon PostgreSQL   │  │ Upstash Redis│   │  Groq / Gemini  │  │ Google OAuth    │
+    │ (multi-tenant DB) │  │ (Celery)     │   │  (LLM + embed)  │  │ (Calendar/Gmail)│
+    └───────────────────┘  └──────────────┘   └─────────────────┘  └────────────────┘
 ```
 
 | Component | Role |
 |-----------|------|
-| **Next.js 16** | Frontend — App Router, React 19, Tailwind CSS 4 |
-| **FastAPI** | REST API — file upload, auth, credits, candidate management |
-| **Celery + Redis** | Async task queue — processes resumes in background |
-| **Neon (PostgreSQL)** | Primary data store — users, profiles, jobs, transactions |
-| **Qdrant** | Vector database — duplicate detection via text embeddings |
-| **Groq / Gemini** | LLM providers — profile extraction, scoring, categorization |
+| **Next.js 16** | Frontend — App Router, React 19, Tailwind CSS 4 (deployed on Vercel) |
+| **FastAPI** | REST API — auth, uploads, candidates, credits, jobs, interviews |
+| **Celery + Upstash Redis** | Async task queue + beat scheduler |
+| **Neon (PostgreSQL)** | Primary data store — users, companies, profiles, jobs, transactions |
+| **Groq / Gemini** | LLM providers — profile extraction, scoring, embedding (Gemini `gemini-embedding-001`) |
+| **Stripe** | Credit packs & payments |
+| **Tesseract + Poppler** | OCR + PDF rasterization |
+| **AWS EFS** | Shared upload volume across API + worker containers |
+
+### Production deployment (AWS)
+
+All three services run as **Fargate** tasks in cluster `rsn-cluster`, pulling one shared image from **ECR** (`resume-screener:latest`):
+
+| Service | Command | CPU / Memory |
+|---------|---------|--------------|
+| `rsn-api` | `uvicorn app.main:app --host 0.0.0.0 --port 8002` | 1 vCPU / 2 GB |
+| `rsn-worker` | `celery -A app.celery_app worker --concurrency=4` | 2 vCPU / 4 GB |
+| `rsn-beat` | `celery -A app.celery_app beat` | 0.25 vCPU / 0.5 GB |
+
+All environment variables are injected from a single **AWS Secrets Manager** secret (`rsn/env`) via ECS task definitions. The frontend proxies `/api/*` to the Application Load Balancer via `frontend/vercel.json`.
 
 ---
 
 ## Tech Stack
 
 ### Backend
-| Technology | Purpose |
+| Technology | Version |
 |------------|---------|
-| Python 3.14 | Runtime |
-| FastAPI 0.115 | Async REST framework |
-| SQLAlchemy 2.0 | Async ORM |
-| Celery 5.4 | Task queue |
-| Redis 5.2 | Message broker |
-| Qdrant 1.13 | Vector similarity search |
-| OpenAI SDK (Groq) | LLM inference |
-| Stripe 11.3 | Payment processing |
-| Tesseract + pytesseract | OCR on images |
-| PyPDF2 + python-docx | PDF/DOCX parsing |
+| Python | 3.11 |
+| FastAPI | 0.115 |
+| SQLAlchemy (async) | 2.0 |
+| Celery | 5.4 |
+| Redis (redis-py) | 5.2 |
+| OpenAI SDK (Groq provider) | ≥1.66 |
+| google-genai | 1.8 |
+| Stripe | 11.3 |
+| asyncpg | 0.30 |
+| Tesseract / pytesseract | 0.3.13 |
+| PyPDF2 / python-docx / pdf2image | document parsing |
 
 ### Frontend
-| Technology | Purpose |
+| Technology | Version |
 |------------|---------|
-| Next.js 16.2 | React framework (App Router) |
-| React 19.2 | UI library |
-| TypeScript 5 | Type safety |
-| Tailwind CSS 4 | Utility-first styling |
+| Next.js | 16.2 |
+| React | 19.2 |
+| TypeScript | 5 |
+| Tailwind CSS | 4 |
+| framer-motion | 12 |
+| Radix UI | 1.x |
 
 ---
 
 ## Features
 
 ### Resume Processing
-- **Batch upload** — drag-and-drop multiple PDF, DOCX, PNG, JPG files
-- **OCR extraction** — Tesseract-based text extraction from scanned images
+- **Batch upload** — ZIP or multi-file upload; PDF, DOCX, PNG, JPG, BMP, TIFF, TXT
+- **OCR extraction** — Tesseract-based text extraction for scanned images
 - **Structured profile extraction** — LLM parses name, email, phone, skills, education, experience, summary into structured JSON
-- **Duplicate detection** — vector similarity + text similarity scoring, duplicate review queue
-- **Real-time progress** — polling-based progress bar with processed/failed counters
+- **Duplicate detection** — exact-field match (email/phone/linkedin/github) + embedding cosine similarity (`≥ 0.95`), review queue
+- **Real-time progress** — job status with processed/failed/total counters, polling UI
+- **Retry & reanalyze** — retry failed files, reanalyze a batch against a new job description
 
 ### AI Analysis & Scoring
-- **Job description matching** — score each candidate against a JD (0–100%)
-- **Skill extraction** — extract matched and missing skills per candidate
-- **Categorization** — auto-categorize candidates (e.g., Strong Match, Possible Match, Not a Match)
-- **Profile weight tuning** — adjust importance of skills, experience, education, certifications
+- **Job description matching** — per-candidate score (0–100) via multi-agent analysis
+- **Skill extraction** — matched + missing skills per candidate
+- **Quality checks** — automated resume-quality flags (missing contact info, short experience, etc.)
+- **Categorization** — Strong / Good / Average / Weak match
+- **Weight tuning** — adjust skill, experience, education, certification, project weights
+- **Knowledge base** — company-specific job description & skill enrichment
 
 ### HR Workflow
-- **Candidate list** — sortable, filterable table with score slider and status filter
-- **Candidate detail** — full profile, skills, experience, notes, status dropdown
-- **Notes** — add and view notes on each candidate
-- **Bulk actions** — delete, status update, CSV export, side-by-side compare (2+ candidates)
-- **Batch management** — batch history, retry failed, reanalyze with new JD
+- **Multi-tenant** — companies, departments, per-user data isolation
+- **Candidate list** — sortable/filterable table, score slider, status filter
+- **Candidate detail** — full profile, skills, experience, notes, status
+- **Bulk actions** — delete, status update, CSV export, side-by-side compare
+- **Jobs** — create/manage job descriptions with JD review and approval
+- **Interviews** — schedule, reschedule, cancel; ICS calendar invites
+- **Notifications & activity logs** — in-app notifications, batch-complete events
 
-### Authentication & Billing
-- **JWT auth** — register/login with hashed tokens, per-user data isolation
-- **Credit system** — 1 credit per resume scored, 20 free on signup
-- **Pricing** — Starter ($39 / 500 credits), Pro ($79 / 2000 credits)
-- **Stripe integration** — checkout sessions, webhook-based credit fulfillment with idempotency (unique `stripe_session_id`)
+### Auth & Billing
+- **JWT auth** — register/login, hashed passwords, per-company isolation
+- **Google OAuth** — Google login + Calendar/Gmail integration
+- **Credit system** — 1 credit per resume scored; free tier + paid packs
+- **Stripe** — checkout sessions, idempotent webhook fulfillment
 
 ### Reliability
-- **Rate-limit handling** — Groq 8k TPM limit respected via `worker_concurrency=1` and exponential backoff
-- **Token limit safety** — context truncation at 3000 chars, per-field limits in profile extraction
-- **Idempotent payments** — duplicate webhook events caught via `IntegrityError` on unique `stripe_session_id`
-- **No shared-filesystem deployment** — text extracted on upload, stored in DB `raw_texts` JSON column, Celery reads from DB
+- **Rate limiting** — token-bucket AI rate limiter (in-memory fallback when Redis is unavailable)
+- **Circuit breaker** — protects against LLM provider outages
+- **Retry with backoff** — Celery `max_retries=3`, exponential backoff, rate-limit-aware
+- **Batch duplicate commits** — single transaction for duplicate records (avoids per-row connection churn)
+- **Observability** — correlation IDs, task logs, failed-task records, CloudWatch log groups
 
 ---
 
@@ -110,156 +149,273 @@ The system uses Groq (via OpenAI SDK) as the primary inference provider with aut
 resume-screener-ai/
 ├── backend/
 │   ├── app/
-│   │   ├── routers/          # API endpoints
-│   │   │   ├── auth.py       # Login, register, me
-│   │   │   ├── upload.py     # File upload
-│   │   │   ├── analysis.py   # Extract & match
-│   │   │   ├── bulk.py       # Bulk upload
-│   │   │   ├── batches.py    # Batch CRUD, reanalyze, retry
-│   │   │   ├── candidates.py # Candidate CRUD, CSV export, compare
-│   │   │   ├── search.py     # Full-text search
-│   │   │   ├── dashboard.py  # Dashboard stats
-│   │   │   └── credits.py    # Checkout, webhook, history
-│   │   ├── services/         # Business logic
-│   │   │   ├── ai_service.py              # LLM client
-│   │   │   ├── profile_extraction.py      # AI profile parsing
-│   │   │   ├── candidate_analysis.py      # Scoring + categorization
-│   │   │   ├── scoring_service.py         # Score calculation
-│   │   │   ├── categorization_service.py  # Category assignment
-│   │   │   ├── duplicate_detection.py     # Qdrant + text similarity
-│   │   │   ├── ocr_service.py             # Tesseract OCR
-│   │   │   └── credit_service.py          # Credit balance management
+│   │   ├── routers/
+│   │   │   ├── auth.py            # /api/auth — register, login, me, register-company
+│   │   │   ├── auth_google.py     # /api/google/auth — OAuth url, callback, status
+│   │   │   ├── upload.py          # /api/upload
+│   │   │   ├── analysis.py        # /api/extract-skills, /api/match
+│   │   │   ├── bulk.py            # /api/resumes/bulk-upload, bulk-upload-files
+│   │   │   ├── batches.py         # /api/resumes/batches — CRUD, reanalyze, retry
+│   │   │   ├── candidates.py      # /api/candidates — CRUD, analyze, compare, CSV, duplicates
+│   │   │   ├── search.py          # /api/search
+│   │   │   ├── dashboard.py       # /api/dashboard/metrics
+│   │   │   ├── credits.py         # /api/credits — packs, balance, history, checkout, webhook
+│   │   │   ├── companies.py       # /api/v1/companies — profile, departments
+│   │   │   ├── jobs.py            # /api/v1/companies — jobs CRUD, review, approve
+│   │   │   ├── knowledge.py       # /api/v1/companies — knowledge, templates, documents
+│   │   │   ├── interviews.py      # /api/interviews — slots, scheduling, ICS
+│   │   │   ├── notifications.py   # /api/notifications — list, read, activity-logs
+│   │   │   ├── admin.py           # /api/admin — failed-tasks, task-logs
+│   │   │   └── ... 
+│   │   ├── services/
+│   │   │   ├── ai_service.py              # LLM client (Groq via OpenAI SDK)
+│   │   │   ├── async_ai_client.py         # Async AI calls
+│   │   │   ├── profile_extraction_service.py  # AI profile parsing
+│   │   │   ├── candidate_analysis_service.py  # Scoring + categorization
+│   │   │   ├── combined_analysis_agent.py     # Multi-agent JD scoring
+│   │   │   ├── scoring_service.py          # Score calculation
+│   │   │   ├── categorization_service.py   # Category assignment
+│   │   │   ├── quality_agent.py            # Resume quality flags
+│   │   │   ├── jd_agent.py                 # JD review / enrichment
+│   │   │   ├── embedding_service.py        # Gemini embeddings
+│   │   │   ├── vector_service.py           # Embedding storage
+│   │   │   ├── duplicate_detection_service.py  # Exact + embedding dup detection
+│   │   │   ├── ocr_service.py              # Tesseract OCR
+│   │   │   ├── credit_service.py           # Credit balance management
+│   │   │   ├── rate_limiter.py             # AI rate limiting
+│   │   │   ├── circuit_breaker.py          # Provider circuit breaker
+│   │   │   ├── notification_service.py     # In-app notifications
+│   │   │   ├── activity_log_service.py     # Activity logging
+│   │   │   ├── logging_service.py          # Correlation logger, failed tasks, task logs
+│   │   │   ├── email_service.py            # Email delivery
+│   │   │   ├── calendar_service.py         # Google Calendar
+│   │   │   ├── ics_service.py              # ICS generation
+│   │   │   ├── google_auth_service.py      # Google OAuth
+│   │   │   └── knowledge_service.py        # Company knowledge base
 │   │   ├── tasks/
-│   │   │   └── resume_processing_task.py  # Celery async tasks
+│   │   │   ├── resume_processing_task.py   # process_resume_file, reanalyze_candidate
+│   │   │   ├── reminder_tasks.py           # 24h / 1h interview reminders
+│   │   │   └── cleanup_tasks.py            # Old-data cleanup
 │   │   ├── models/
-│   │   │   ├── orm.py          # SQLAlchemy models
-│   │   │   └── candidate_schemas.py  # Pydantic schemas
+│   │   │   ├── orm.py                      # SQLAlchemy models
+│   │   │   └── candidate_schemas.py        # Pydantic schemas
 │   │   ├── repositories/
-│   │   │   └── candidate_repository.py  # Data access layer
-│   │   ├── main.py            # FastAPI app + CORS + routes
-│   │   ├── celery_app.py      # Celery configuration
-│   │   ├── config.py          # Settings + Tesseract init
-│   │   ├── database.py        # AsyncSession factory
-│   │   ├── auth_utils.py      # Token encode/decode
-│   │   └── dependencies.py    # Auth dependency injection
+│   │   │   └── candidate_repository.py     # Data access layer
+│   │   ├── main.py                         # FastAPI app + CORS + routers
+│   │   ├── celery_app.py                   # Celery config, queues, beat schedule
+│   │   ├── config.py                       # Pydantic settings + Tesseract init
+│   │   ├── database.py                     # Async engine + session factory
+│   │   ├── auth_utils.py                   # JWT encode/decode
+│   │   └── dependencies.py                 # Auth dependency injection
+│   ├── tests/                              # Unit, e2e, and integration tests
 │   ├── requirements.txt
-│   └── .env
+│   ├── Dockerfile                          # Builds the shared ECR image
+│   └── .env                                # Local config (git-ignored)
 ├── frontend/
 │   ├── app/
-│   │   ├── page.tsx           # Home/dashboard
-│   │   ├── layout.tsx         # Root layout + sidebar
-│   │   ├── login/             # Login page
-│   │   ├── register/          # Registration page
-│   │   ├── analyze/           # Single resume analysis
-│   │   ├── bulk/              # Batch upload + progress
-│   │   ├── batches/           # Batch history
-│   │   ├── candidates/        # Candidate list + detail
-│   │   ├── search/            # Candidate search
-│   │   ├── billing/           # Credit history
-│   │   └── pricing/           # Pricing plans
-│   ├── components/
-│   │   ├── AuthSidebar.tsx    # Sign in/out sidebar
-│   │   ├── FileUpload.tsx     # Drag-and-drop uploader
-│   │   └── ResultsDisplay.tsx # Analysis results
-│   ├── lib/
-│   │   └── api.ts             # API client + auth helpers
+│   │   ├── page.tsx            # Landing
+│   │   ├── layout.tsx          # Root layout + theme
+│   │   ├── login/ register/    # Auth pages
+│   │   ├── onboarding/         # Company onboarding
+│   │   ├── analyze/            # Single resume analysis
+│   │   ├── bulk/               # Batch upload + progress
+│   │   ├── batches/            # Batch history
+│   │   ├── candidates/         # Candidate list + detail
+│   │   ├── search/             # Candidate search
+│   │   ├── jobs/               # Job descriptions
+│   │   ├── interviews/         # Interview scheduling
+│   │   ├── analytics/          # Analytics dashboard
+│   │   ├── billing/            # Credit history
+│   │   ├── pricing/            # Pricing plans
+│   │   └── settings/           # Settings
+│   ├── components/             # UI components (sidebar, upload, charts, etc.)
+│   ├── lib/api.ts              # API client + auth helpers
+│   ├── vercel.json             # /api/* proxy → ALB
 │   └── package.json
 └── README.md
 ```
 
 ---
 
-## Setup
+## Local Setup
 
 ### Prerequisites
-- Python 3.14+
+- Python 3.11+
 - Node.js 20+
-- Tesseract OCR (for image-based resumes)
-- PostgreSQL (or Neon account)
-- Redis (or Upstash)
+- Docker (for a local Redis) **or** an Upstash Redis instance
+- Tesseract OCR installed (`apt-get install tesseract-ocr` on Linux, UB-Mannheim installer on Windows)
+- A Neon PostgreSQL database
+- Groq API key (and optionally Gemini for embeddings)
 
-### Backend
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate     # Windows
+venv\Scripts\activate          # Windows  |  source venv/bin/activate  (macOS/Linux)
 pip install -r requirements.txt
 ```
 
-Configure `.env`:
+Create `.env` (see `backend/.env` for all keys):
 
 ```env
-NEON_DATABASE_URL=postgresql://...
+# AI
+AI_PROVIDER=groq
 GROQ_API_KEY=gsk_...
+GROQ_MODEL=openai/gpt-oss-120b
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_EMBEDDING_MODEL=gemini-embedding-001
+
+# Database
+NEON_DATABASE_URL=postgresql+asyncpg://user:pass@host/db
+
+# Redis / Celery (local Docker: redis://localhost:6379/0)
+REDIS_URL=redis://localhost:6379/0
+
+# Payments (optional for local)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-REDIS_URL=redis://localhost:6379/0
-QDRANT_URL=https://...qdrant.io
-QDRANT_API_KEY=...
 ```
 
-Run:
+Run the API **and** the Celery worker in two terminals:
 
 ```bash
-uvicorn app.main:app --port 8002 --reload
-celery -A app.celery_app worker --loglevel=info --concurrency=1
+# Terminal 1 — API server
+python run.py                    # http://localhost:8002, docs at /docs
+
+# Terminal 2 — Celery worker (required to process uploads)
+celery -A app.celery_app worker --loglevel=info --pool=solo
 ```
 
-### Frontend
+> **Note:** Uploads dispatch `process_resume_file` to Celery. Without a running worker, jobs are created but never processed.
+
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                     # http://localhost:3000
 ```
 
-Set `NEXT_PUBLIC_API_URL=http://localhost:8002` for local development.
+The API client defaults to `http://localhost:8002` when `NEXT_PUBLIC_API_URL` is unset, and the Vercel rewrite (`vercel.json`) proxies `/api/*` to the ALB in production.
 
 ---
 
-## API Endpoints
+## Testing
+
+```bash
+cd backend
+# Unit tests (no DB required)
+python -m pytest tests/test_auth_utils.py tests/test_rate_limiter.py \
+    tests/test_embedding_service.py tests/test_duplicate_detection.py -v
+
+# Full suite (requires NEON_DATABASE_URL in .env)
+python -m pytest -v
+```
+
+Key suites: `test_e2e_flow.py`, `test_multi_tenant_auth.py`, `test_combined_analysis.py`, `test_golden_resumes.py`, `test_interviews.py`, `test_job_management.py`.
+
+---
+
+## API Overview
+
+All endpoints are documented interactively at `/docs` (Swagger UI).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/api/auth/register` | — | Create account |
 | POST | `/api/auth/login` | — | Login, get JWT |
+| POST | `/api/auth/register-company` | ✓ | Onboard a company |
 | GET | `/api/auth/me` | ✓ | Current user |
+| GET | `/api/google/auth/url` | ✓ | Google OAuth URL |
+| GET | `/api/google/auth/callback` | — | OAuth callback |
 | POST | `/api/upload` | ✓ | Upload single resume |
-| POST | `/api/bulk/upload` | ✓ | Upload multiple resumes |
 | POST | `/api/extract-skills` | ✓ | AI skill extraction |
-| POST | `/api/analyze` | ✓ | Score candidate vs JD |
-| GET | `/api/candidates` | ✓ | List candidates (filtered, paginated) |
-| GET | `/api/candidates/:id` | ✓ | Candidate detail |
-| PATCH | `/api/candidates/:id` | ✓ | Update score, status, notes |
-| DELETE | `/api/candidates/:id` | ✓ | Delete candidate |
-| POST | `/api/candidates/bulk` | ✓ | Bulk delete / status update |
-| POST | `/api/candidates/compare` | ✓ | Side-by-side comparison |
-| GET | `/api/candidates/export/csv` | ✓ | Export to CSV |
+| POST | `/api/match` | ✓ | Match resume vs job description |
+| POST | `/api/resumes/bulk-upload` | ✓ | Upload ZIP of resumes |
+| POST | `/api/resumes/bulk-upload-files` | ✓ | Upload multiple files |
+| GET | `/api/resumes/bulk-upload/{job_id}` | ✓ | Job status |
 | GET | `/api/resumes/batches` | ✓ | Batch history |
-| DELETE | `/api/resumes/batches/:id` | ✓ | Delete batch + candidates |
-| POST | `/api/resumes/batches/:id/reanalyze` | ✓ | Reanalyze with new JD |
-| POST | `/api/resumes/batches/:id/retry` | ✓ | Retry failed files |
-| GET | `/api/search?q=` | ✓ | Full-text search |
-| GET | `/api/dashboard/stats` | ✓ | Dashboard metrics |
+| GET | `/api/resumes/batches/{job_id}` | ✓ | Batch detail |
+| DELETE | `/api/resumes/batches/{job_id}` | ✓ | Delete batch + candidates |
+| POST | `/api/resumes/batches/{job_id}/reanalyze` | ✓ | Reanalyze with new JD |
+| POST | `/api/resumes/batches/{job_id}/retry` | ✓ | Retry failed files |
+| GET | `/api/candidates` | ✓ | List/filter candidates (`batch_id`, `category`, `search`…) |
+| GET | `/api/candidates/{id}` | ✓ | Candidate detail |
+| PATCH | `/api/candidates/{id}` | ✓ | Update score/status/notes |
+| DELETE | `/api/candidates/{id}` | ✓ | Delete candidate |
+| POST | `/api/candidates/analyze` | ✓ | Score candidate vs JD |
+| GET | `/api/candidates/{id}/duplicates` | ✓ | Duplicate flags |
+| GET | `/api/candidates/duplicates/pending` | ✓ | Pending duplicate review |
+| POST | `/api/candidates/bulk/delete` | ✓ | Bulk delete |
+| POST | `/api/candidates/bulk/status` | ✓ | Bulk status update |
+| POST | `/api/candidates/compare` | ✓ | Side-by-side compare |
+| GET | `/api/candidates/export/csv` | ✓ | Export to CSV |
+| POST | `/api/search/candidates` | ✓ | Full-text search |
+| GET | `/api/dashboard/metrics` | ✓ | Dashboard metrics |
+| GET | `/api/credits/packs` | ✓ | Credit packs |
+| GET | `/api/credits/balance` | ✓ | Credit balance |
+| GET | `/api/credits/history` | ✓ | Credit transactions |
 | POST | `/api/credits/create-checkout` | ✓ | Stripe checkout session |
-| POST | `/api/credits/webhook` | — | Stripe event webhook |
-| GET | `/api/credits/history` | ✓ | Credit transaction log |
+| POST | `/api/credits/webhook` | — | Stripe webhook |
+| GET | `/api/v1/companies/{id}` | ✓ | Company profile |
+| PATCH | `/api/v1/companies/{id}` | ✓ | Update company |
+| GET/POST | `/api/v1/companies/{id}/jobs` | ✓ | Jobs CRUD |
+| POST | `/api/v1/companies/{id}/jobs/review` | ✓ | JD review |
+| GET/POST | `/api/v1/companies/{id}/knowledge` | ✓ | Knowledge base |
+| GET/POST | `/api/interviews` | ✓ | Interview scheduling |
+| GET/POST | `/api/interviews/slots` | ✓ | Interview slots |
+| GET | `/api/interviews/{id}/ics` | ✓ | Download ICS invite |
+| GET | `/api/notifications` | ✓ | Notifications |
+| GET | `/api/notifications/activity-logs` | ✓ | Activity logs |
+| GET | `/api/admin/failed-tasks` | ✓ | Failed tasks (admin) |
+| GET | `/api/admin/task-logs` | ✓ | Task logs (admin) |
 
 ---
 
-## Deployment
+## Deploying to Production (AWS)
 
-### Backend (Hugging Face Spaces)
-The FastAPI backend deploys as a Hugging Face Space with:
-- Docker container running uvicorn + Celery
-- Persistent volume for uploads
-- Environment variables configured via Space secrets
+The project is deployed with **AWS ECS Fargate** (backend) + **Vercel** (frontend).
+
+### Backend image build & push
+
+```bash
+cd backend
+
+# Authenticate Docker to ECR (get the token from AWS)
+aws ecr get-login-password --region ap-southeast-1 \
+  | docker login --username AWS --password-stdin 134604497809.dkr.ecr.ap-southeast-1.amazonaws.com
+
+docker build -t resume-screener:latest .
+docker tag resume-screener:latest 134604497809.dkr.ecr.ap-southeast-1.amazonaws.com/resume-screener:latest
+docker push 134604497809.dkr.ecr.ap-southeast-1.amazonaws.com/resume-screener:latest
+```
+
+### Update ECS services
+
+```bash
+aws ecs update-service --cluster rsn-cluster --service rsn-api --force-new-deployment --region ap-southeast-1
+aws ecs update-service --cluster rsn-cluster --service rsn-worker --force-new-deployment --region ap-southeast-1
+aws ecs update-service --cluster rsn-cluster --service rsn-beat --force-new-deployment --region ap-southeast-1
+```
+
+### Configuration via Secrets Manager
+
+All environment variables live in the `rsn/env` secret (region `ap-southeast-1`). Task definitions map every variable from this secret, so changing a value requires only a redeploy:
+
+```bash
+aws secretsmanager put-secret-value --secret-id rsn/env \
+  --secret-string '{"REDIS_URL":"rediss://...", ...}' --region ap-southeast-1
+```
 
 ### Frontend (Vercel)
-Deploy the Next.js frontend to Vercel with:
-```
-NEXT_PUBLIC_API_URL=https://your-backend.hf.space
+
+Deploy the `frontend/` directory to Vercel. `frontend/vercel.json` rewrites `/api/*` to the ALB:
+
+```json
+{ "rewrites": [{ "source": "/api/:path*",
+                 "destination": "http://rsn-alb-...ap-southeast-1.elb.amazonaws.com/api/:path*" }] }
 ```
 
 ---
@@ -268,17 +424,27 @@ NEXT_PUBLIC_API_URL=https://your-backend.hf.space
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEON_DATABASE_URL` | ✓ | PostgreSQL connection string |
+| `AI_PROVIDER` | ✓ | `groq` or `gemini` |
 | `GROQ_API_KEY` | ✓ | Groq API key (primary LLM) |
-| `OPENAI_API_KEY` | ✓ | OpenAI-compatible fallback |
-| `GEMINI_API_KEY` | — | Gemini API key (fallback) |
-| `REDIS_URL` | ✓ | Redis connection for Celery |
-| `QDRANT_URL` | ✓ | Qdrant vector DB endpoint |
-| `QDRANT_API_KEY` | ✓ | Qdrant API key |
-| `STRIPE_SECRET_KEY` | ✓ | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | ✓ | Stripe webhook signing secret |
-| `STRIPE_PRICE_STARTER` | ✓ | Price ID for Starter pack |
-| `STRIPE_PRICE_PRO` | ✓ | Price ID for Pro pack |
+| `GROQ_MODEL` | ✓ | e.g. `openai/gpt-oss-120b` |
+| `GEMINI_API_KEY` | ✓ | Gemini API key (embeddings) |
+| `GEMINI_MODEL` | ✓ | e.g. `gemini-2.5-flash` |
+| `GEMINI_EMBEDDING_MODEL` | ✓ | e.g. `gemini-embedding-001` |
+| `MAX_TEXT_LENGTH` | — | Resume text truncation limit |
+| `NEON_DATABASE_URL` | ✓ | PostgreSQL (Neon) connection string |
+| `REDIS_URL` | ✓ | Celery broker/backend. Upstash: `rediss://...:6379?ssl_cert_reqs=required` |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | — | Upstash REST API access |
+| `QDRANT_URL` / `QDRANT_API_KEY` | — | Vector DB (legacy — embeddings stored in DB) |
+| `JWT_SECRET` / `JWT_ALGORITHM` / `JWT_EXPIRY_HOURS` | ✓ | Auth tokens |
+| `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` | ✓ | Stripe API keys |
+| `STRIPE_WEBHOOK_SECRET` | ✓ | Webhook signing secret |
+| `STRIPE_PRICE_STARTER` / `STRIPE_PRICE_PRO` | ✓ | Stripe price IDs |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Google OAuth |
+| `GOOGLE_REDIRECT_URI` | — | OAuth callback URL |
+| `EMAILJS_*` | — | Email fallback |
+| `UPLOAD_DIR` | — | Upload path (EFS in production) |
+| `RATE_LIMIT_REQUESTS_PER_MINUTE` | — | AI rate limit |
+| `MOCK_EXTERNAL_SERVICES` | — | Mock external APIs flag |
 
 ---
 

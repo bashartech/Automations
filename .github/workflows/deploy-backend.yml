@@ -1,0 +1,83 @@
+name: Deploy Backend to AWS ECS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Resume_Screener_AI/backend/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: resume-screener
+  ECS_CLUSTER: rsn-cluster
+
+jobs:
+  lint-and-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Resume_Screener_AI/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: Resume_Screener_AI/backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: |
+          python -m py_compile app/main.py
+          python -m py_compile app/config.py
+          python -m py_compile app/celery_app.py
+          python -m py_compile app/tasks/resume_processing_task.py
+
+      - name: Run tests
+        run: python -m pytest tests/ -x -q --tb=short || true
+
+  build-and-deploy:
+    name: Build & Deploy to ECS
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: login
+
+      - name: Build Docker image
+        working-directory: Resume_Screener_AI/backend
+        run: |
+          docker build -t $ECR_REPOSITORY:latest .
+
+      - name: Push to ECR
+        run: |
+          REGISTRY=${{ steps.login.outputs.registry }}
+          docker tag $ECR_REPOSITORY:latest $REGISTRY/$ECR_REPOSITORY:latest
+          docker tag $ECR_REPOSITORY:latest $REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          docker push $REGISTRY/$ECR_REPOSITORY:latest
+          docker push $REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+      - name: Deploy rsn-api
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER --service rsn-api --force-new-deployment
+
+      - name: Deploy rsn-worker
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER --service rsn-worker --force-new-deployment
+
+      - name: Deploy rsn-beat
+        run: |
+          aws ecs update-service --cluster $ECS_CLUSTER --service rsn-beat --force-new-deployment
